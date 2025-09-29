@@ -6,7 +6,9 @@ export default class AppointmentService {
     getAvailableSlotsUseCase,
     getAppointmentOfClientUseCase,
     getAppointmentByIdUseCase,
-    rescheduleAppointmentUseCase
+    rescheduleAppointmentUseCase,
+    getTodayScheduleUseCase,
+    getVetAppointmentsUseCase
   ) {
     this.createAppointmentUseCase = createAppointmentUseCase;
     this.getAppointmentsUseCase = getAppointmentsUseCase;
@@ -15,6 +17,8 @@ export default class AppointmentService {
     this.getAppointmentOfClientUseCase = getAppointmentOfClientUseCase;
     this.getAppointmentByIdUseCase = getAppointmentByIdUseCase;
     this.rescheduleAppointmentUseCase = rescheduleAppointmentUseCase;
+    this.getTodayScheduleUseCase = getTodayScheduleUseCase;
+    this.getVetAppointmentsUseCase = getVetAppointmentsUseCase;
   }
 
   createAppointment(data) {
@@ -39,5 +43,13 @@ export default class AppointmentService {
   }
   reschedule(appointmentId, updates) {
     return this.rescheduleAppointmentUseCase.execute(appointmentId, updates);
+  }
+
+  getTodaySchedule(clinicId) {
+    return this.getTodayScheduleUseCase.execute(clinicId);
+  }
+
+  getVetAppointments(vetId, date) {
+    return this.getVetAppointmentsUseCase.execute(vetId, date);
   }
 }

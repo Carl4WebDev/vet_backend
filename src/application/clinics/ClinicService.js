@@ -5,13 +5,15 @@ export default class ClinicService {
     loginClinicUseCase,
     logoutUserUseCase,
     getClinicsUseCase,
-    getClinicByIdUseCase
+    getClinicByIdUseCase,
+    getAllVeterinariansUseCase
   ) {
     this.registerClinicUseCase = registerClinicUseCase;
     this.loginClinicUseCase = loginClinicUseCase;
     this.logoutUserUseCase = logoutUserUseCase;
     this.getClinicsUseCase = getClinicsUseCase;
     this.getClinicByIdUseCase = getClinicByIdUseCase;
+    this.getAllVeterinariansUseCase = getAllVeterinariansUseCase;
   }
 
   register(clinicData, role) {
@@ -30,5 +32,8 @@ export default class ClinicService {
   }
   getClinicById(clinicId) {
     return this.getClinicByIdUseCase.execute(clinicId);
+  }
+  getAllVeterinarians(clinicId) {
+    return this.getAllVeterinariansUseCase.execute(clinicId);
   }
 }

@@ -4,8 +4,9 @@ import AddressBuilder from "../../../domain/Builders/AddressBuilder.js";
 import ClinicBuilder from "../../../domain/Builders/ClinicBuilder.js";
 
 export default class ClinicController {
-  constructor(clinicService) {
+  constructor(clinicService, subscriptionRepo) {
     this.clinicService = clinicService;
+    this.subscriptionRepo = subscriptionRepo;
   }
 
   // GET /clinics (public)
@@ -56,31 +57,35 @@ export default class ClinicController {
           .json({ message: "Address information is required" });
       }
 
-      const address = new AddressBuilder()
-        .setCountry(req.body.address.country)
-        .setStreet(req.body.address.street)
-        .setCity(req.body.address.city)
-        .setProvince(req.body.address.province)
-        .setPostalCode(req.body.address.postalCode)
-        .setBarangay(req.body.address.barangay)
-        .setUnit(req.body.address.unit)
-        .build();
-
-      const clinicData = new ClinicBuilder()
-        .setName(req.body.clinicName)
-        .setPhoneNumber(req.body.phoneNumber)
-        .setIsActive(req.body.isActive)
-        .setAddress(address)
-        .setOwner(req.body.owner)
-        .setTelephone(req.body.telephone)
-        .build();
+      const clinicData = {
+        email: req.body.email,
+        password: req.body.password,
+        clinic_name: req.body.clinic_name,
+        phone_number: req.body.phone_number,
+        is_active: req.body.is_active ?? true,
+        telephone: req.body.telephone || null,
+        owner: req.body.owner || null,
+        address: {
+          street: req.body.address.street,
+          country: req.body.address.country,
+          city: req.body.address.city,
+          province: req.body.address.province,
+          postal_code: req.body.address.postal_code,
+          barangay: req.body.address.barangay,
+          unit_number: req.body.address.unit_number,
+          latitude: req.body.address.latitude,
+          longitude: req.body.address.longitude,
+        },
+      };
 
       const result = await this.clinicService.register(
         clinicData,
         expectedRole
       );
+
       res.status(201).json(result);
     } catch (err) {
+      console.error(err);
       res.status(400).json({ message: err.message || "Registration failed" });
     }
   };
@@ -111,4 +116,17 @@ export default class ClinicController {
       });
     }
   }
+
+  getAllVeterinarians = async (req, res) => {
+    try {
+      const { clinicId } = req.params;
+      const vets = await this.clinicService.getAllVeterinarians(clinicId);
+      res.json({ success: true, data: vets });
+    } catch (error) {
+      console.error("Error fetching veterinarians:", error);
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to fetch veterinarians" });
+    }
+  };
 }

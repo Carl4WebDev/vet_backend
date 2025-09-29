@@ -44,4 +44,17 @@ export default class GetClientController {
       });
     }
   }
+  getClientsByClinic = async (req, res) => {
+    try {
+      const { clinicId } = req.params;
+      const clients = await this.clientService.getClientByClinic(clinicId);
+
+      res.json({ success: true, data: clients });
+    } catch (error) {
+      console.error("Error getting clients by clinic:", error);
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to get clients" });
+    }
+  };
 }

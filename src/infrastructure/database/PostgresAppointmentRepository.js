@@ -215,4 +215,54 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
     );
     return result.rows[0];
   }
+
+  async getTodaySchedule(clinicId) {
+    const query = `
+      SELECT a.appointment_id, a.start_time, a.end_time, at.name AS type, a.status,
+             c.client_name, p.name AS pet_name, v.name
+      FROM appointments a
+      JOIN clients c ON a.client_id = c.client_id
+      JOIN pets p ON a.pet_id = p.pet_id
+      JOIN veterinarians v ON a.vet_id = v.vet_id
+      JOIN appointmenttypes at ON a.type_id = at.type_id
+      WHERE a.clinic_id = $1
+        AND a.date = CURRENT_DATE
+      ORDER BY a.start_time ASC
+    `;
+    const result = await this.pool.query(query, [clinicId]);
+    return result.rows;
+  }
+
+  async getAppointmentsByVeterinarian(vetId, date) {
+    let query = `
+    SELECT 
+      a.appointment_id,
+      a.start_time,
+      a.end_time,
+      a.date,
+      a.status,
+      c.client_name AS customer_name,
+      p.name AS pet_name,
+      v.name AS veterinarian_name,
+      at.name AS type_name
+    FROM appointments a
+    JOIN clients c ON a.client_id = c.client_id
+    JOIN pets p ON a.pet_id = p.pet_id
+    JOIN veterinarians v ON a.vet_id = v.vet_id
+    JOIN appointmenttypes at ON a.type_id = at.type_id
+    WHERE a.vet_id = $1
+  `;
+
+    const params = [vetId];
+
+    if (date) {
+      query += ` AND a.date = $2`; // ✅ add date filter only if provided
+      params.push(date);
+    }
+
+    query += ` ORDER BY a.start_time ASC`;
+
+    const result = await this.pool.query(query, params);
+    return result.rows;
+  }
 }

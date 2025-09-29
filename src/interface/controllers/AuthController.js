@@ -42,6 +42,8 @@ export default class AuthController {
         .setPostalCode(req.body.address.postalCode)
         .setBarangay(req.body.address.barangay)
         .setUnitNumber(req.body.address.Unit)
+        .setLatitude(req.body.address.latitude)
+        .setLongitude(req.body.address.longitude)
         .build();
 
       const userData = new UserBuilder()

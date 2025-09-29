@@ -11,6 +11,10 @@ export default function getClientRoutes(clientController) {
     "/get-client-only/:userId",
     clientController.getClient.bind(clientController)
   );
+  router.get(
+    "/get-client-clinic/:clinicId",
+    clientController.getClientsByClinic.bind(clientController)
+  );
   router.put(
     "/edit-client/:clientId",
     clientController.editClient.bind(clientController)

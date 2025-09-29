@@ -35,9 +35,11 @@ export default class PostgresUserRepository extends IUserRepository {
       const addressId = await this.insertAddress(client, userData.address);
 
       // 3️⃣ Insert into Role-Specific Table
-
       if (role === "client") {
         await this.insertClient(client, userData, user.user_id, addressId);
+      }
+      if (role === "clinic_owner") {
+        await this.insertClinic(client, userData, user.user_id, addressId);
       }
 
       await client.query("COMMIT");
@@ -351,5 +353,16 @@ export default class PostgresUserRepository extends IUserRepository {
       [userId]
     );
     return result.rows[0];
+  }
+
+  async getClientsByClinic(clinicId) {
+    const query = `
+      SELECT 
+      *
+      FROM clients
+      WHERE clinic_id = $1
+    `;
+    const result = await this.pool.query(query, [clinicId]);
+    return result.rows;
   }
 }

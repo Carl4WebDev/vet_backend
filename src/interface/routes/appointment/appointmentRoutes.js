@@ -29,5 +29,13 @@ export default function appointmentRoutes(appointmentController) {
     appointmentController.reschedule.bind(appointmentController)
   );
 
+  router.get(
+    "/schedule-today/:clinicId",
+    appointmentController.getTodaySchedule.bind(appointmentController)
+  );
+  router.get(
+    "/vet-appointments/:vetId",
+    appointmentController.getVetAppointments.bind(appointmentController)
+  );
   return router;
 }

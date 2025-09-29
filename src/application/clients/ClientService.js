@@ -1,12 +1,22 @@
 export default class ClientSerice {
-  constructor(getClientUseCase, editClientUseCase, getClientOnlyUseCase) {
+  constructor(
+    getClientUseCase,
+    editClientUseCase,
+    getClientOnlyUseCase,
+    getClientByClinicUseCase
+  ) {
     this.getClientUseCase = getClientUseCase;
     this.editClientUseCase = editClientUseCase;
     this.getClientOnlyUseCase = getClientOnlyUseCase;
+    this.getClientByClinicUseCase = getClientByClinicUseCase;
   }
 
   getClient(id) {
     return this.getClientUseCase.execute(id);
+  }
+
+  getClientByClinic(clinicId) {
+    return this.getClientByClinicUseCase.execute(clinicId);
   }
 
   getClientOnly(id) {

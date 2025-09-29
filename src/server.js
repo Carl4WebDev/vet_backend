@@ -51,6 +51,7 @@ const authController = new AuthController(authService);
 
 // Auth Routes by Role
 app.use("/auth/client", clientAuthRoutes(authController));
+
 //------------------------------------------------------------------------------------------------
 
 const tokenClinicService = new JwtTokenService();
@@ -59,17 +60,20 @@ const passwordHasherClinic = new BcryptPasswordHasher();
 import ClinicService from "./application/clinics/ClinicService.js";
 import ClinicController from "./interface/controllers/clinics/ClinicController.js";
 import PostgresClinicRepository from "./infrastructure/database/PostgresClinicRepository.js";
+import ClinicRepo from "./infrastructure/database/ClinicRepo.js";
 
 import RegisterClinicUseCase from "./application/clinics/use-case/RegisterClinicUseCase.js";
 import LoginClinicUseCase from "./application/clinics/use-case/LoginClinicUseCase.js";
 import LogoutClinicUseCase from "./application/clinics/use-case/LogoutClinicUseCase.js";
 import GetAllClinicsUseCase from "./application/clinics/use-case/GetAllClinicsUseCase.js";
 import GetClinicByIdUseCase from "./application/clinics/use-case/GetClinicByIdUseCase.js";
+import GetAllVetUseCase from "./application/clinics/use-case/GetAllVetUseCase.js";
 
 const clinicRepository = new PostgresClinicRepository(pool);
+const clinicRepo = new ClinicRepo(pool);
 
 const registerClinicUseCase = new RegisterClinicUseCase(
-  clinicRepository,
+  clinicRepo,
   tokenClinicService,
   passwordHasherClinic
 );
@@ -82,13 +86,15 @@ const loginClinicUseCase = new LoginClinicUseCase(
 const logoutClinicUseCase = new LogoutClinicUseCase();
 const getAllClinicsUseCase = new GetAllClinicsUseCase(clinicRepository);
 const getClinicByIdUseCase = new GetClinicByIdUseCase(clinicRepository);
+const getAllVetUseCase = new GetAllVetUseCase(clinicRepository);
 
 const clinicService = new ClinicService(
   registerClinicUseCase,
   loginClinicUseCase,
   logoutClinicUseCase,
   getAllClinicsUseCase,
-  getClinicByIdUseCase
+  getClinicByIdUseCase,
+  getAllVetUseCase
 );
 const clinicController = new ClinicController(clinicService);
 app.use("/clinic", clinicAuthRoutes(clinicController));
@@ -98,6 +104,7 @@ app.use("/clinic", clinicAuthRoutes(clinicController));
 import GetClientUseCase from "./application/clients/use-case/GetClientUseCase.js";
 import EditClientUseCase from "./application/clients/use-case/EditClientUseCase.js";
 import GetClientOnlyUseCase from "./application/clients/use-case/GetClientOnlyUseCase.js";
+import GetClientByClinic from "./application/clients/use-case/GetClientByClinicUseCase.js";
 
 import ClientController from "./interface/controllers/clients/ClientController.js";
 import clientRoutes from "./interface/routes/clients/clientRoutes.js";
@@ -106,10 +113,12 @@ import ClientService from "./application/clients/ClientService.js";
 const getClientUseCase = new GetClientUseCase(userRepository);
 const editClientUseCase = new EditClientUseCase(userRepository);
 const getClientOnlyUseCase = new GetClientOnlyUseCase(userRepository);
+const getClientByClinicUseCase = new GetClientByClinic(userRepository);
 const clientService = new ClientService(
   getClientUseCase,
   editClientUseCase,
-  getClientOnlyUseCase
+  getClientOnlyUseCase,
+  getClientByClinicUseCase
 );
 const clientController = new ClientController(clientService);
 app.use("/clients", clientRoutes(clientController));
@@ -162,6 +171,8 @@ import GetAvailableSlotsUseCase from "./application/appointments/use-case/GetAva
 import GetAppointmentOfClientUseCase from "./application/appointments/use-case/GetApppointmentOfClientUseCase.js";
 import GetAppointmentByIdUseCase from "./application/appointments/use-case/GetAppointmentByIdUseCase.js";
 import RescheduleAppointmentUseCase from "./application/appointments/use-case/RescheduleAppointmentUseCase.js";
+import GetTodayScheduleUseCase from "./application/appointments/use-case/GetTodayScheduleUseCase.js";
+import GetVetAppointmentsUseCase from "./application/appointments/use-case/GetVetAppointmentsUseCase.js";
 
 import AppointmentService from "./application/appointments/AppointmentService.js";
 import AppointmentController from "./interface/controllers/appointments/AppointmentController.js";
@@ -195,6 +206,13 @@ const getAppointmentByIdUseCase = new GetAppointmentByIdUseCase(
   appointmentRepository
 );
 
+const getTodayScheduleUseCase = new GetTodayScheduleUseCase(
+  appointmentRepository
+);
+const getVetAppointmentsUseCase = new GetVetAppointmentsUseCase(
+  appointmentRepository
+);
+
 const appointmentService = new AppointmentService(
   createAppointmentUseCase,
   getAppointmentsUseCase,
@@ -202,7 +220,9 @@ const appointmentService = new AppointmentService(
   getAvailableSlotsUseCase,
   getAppointmentOfClientUseCase,
   getAppointmentByIdUseCase,
-  rescheduleAppointmentUseCase
+  rescheduleAppointmentUseCase,
+  getTodayScheduleUseCase,
+  getVetAppointmentsUseCase
 );
 
 const appointmentController = new AppointmentController(appointmentService);
@@ -233,6 +253,7 @@ const appointmentTypeController = new AppointmentTypeController(
 app.use("/appointment-types", appointmentTypeRoutes(appointmentTypeController));
 
 //==========================================================================================medical records
+
 import PetMedRecordController from "./interface/controllers/medicalRecords/PetMedRecordController.js";
 import medRecordsRoutes from "./interface/routes/medicalRecords/medRecordsRoutes.js";
 
@@ -287,7 +308,6 @@ io.on("connection", (socket) => {
     // console.log(`User ${senderId} joined private chat with ${receiverId}`);
   });
 
-  // Send private message
   socket.on("sendPrivateMessage", ({ senderId, receiverId, text }) => {
     const conversationId = [senderId, receiverId].sort().join("_");
     const message = {
@@ -298,22 +318,13 @@ io.on("connection", (socket) => {
       timestamp: new Date(),
     };
 
-    // Store message
     if (!privateMessages[conversationId]) {
       privateMessages[conversationId] = [];
     }
     privateMessages[conversationId].push(message);
 
-    // Send to sender
-    socket.emit("receiveMessage", message);
-
-    // Send to receiver if online
-    const receiverSocketId = activeUsers.get(receiverId);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("receiveMessage", message);
-    }
-
-    // console.log(`Private message from ${senderId} to ${receiverId}: ${text}`);
+    // ✅ Broadcast to everyone in the room (both sender & receiver)
+    io.to(conversationId).emit("receiveMessage", message);
   });
 
   socket.on("disconnect", () => {
@@ -345,3 +356,78 @@ app.get("/chats", (req, res) => {
 server.listen(ENV.PORT, () => {
   console.log(`🚀 Server + Socket.IO running on port ${ENV.PORT}`);
 });
+
+//==========================================================================================insights
+
+import InsightsRepo from "./infrastructure/database/InsightsRepo.js";
+import InsightsService from "./application/insights/InsightsService.js";
+import InsightsController from "./interface/controllers/insights/InsightsController.js";
+import insightRoutes from "./interface/routes/insights/insightRoutes.js";
+
+const insightsRepo = new InsightsRepo(pool);
+const insightsService = new InsightsService(insightsRepo);
+const insightsController = new InsightsController(insightsService);
+
+app.use("/insights", insightRoutes(insightsController));
+//==========================================================================================ownerInsights
+import OwnerInsightsRepo from "./infrastructure/database/OwnerInsightsRepo.js";
+import OwnerInsightsService from "./application/ownerInsights/OwnerInsightsService.js";
+import OwnerInsightsController from "./interface/controllers/ownerInsights/OwnerInsightsController.js";
+import ownerInsightsRoutes from "./interface/routes/ownerInsights/ownerInsightsRoutes.js";
+
+const ownerInsightsRepo = new OwnerInsightsRepo(pool);
+const ownerInsightsService = new OwnerInsightsService(ownerInsightsRepo);
+const ownerInsightsController = new OwnerInsightsController(
+  ownerInsightsService
+);
+app.use("/owner-insights", ownerInsightsRoutes(ownerInsightsController));
+
+//==========================================================================================clinic pet owners
+import OwnerRepo from "./infrastructure/database/OwnerRepo.js";
+import OwnerService from "./application/ownerInsights/OwnerService.js";
+import OwnerController from "./interface/controllers/ownerInsights/OwnerController.js";
+import ownerRoutes from "./interface/routes/ownerInsights/ownerRoutes.js";
+
+const ownerRepo = new OwnerRepo(pool);
+const ownerService = new OwnerService(ownerRepo);
+const ownerController = new OwnerController(ownerService);
+
+app.use("/clinic-client", ownerRoutes(ownerController));
+
+//==========================================================================================clinic patient
+import PatientRecordRepo from "./infrastructure/database/PatientRecordRepo.js";
+import GetPatientRecordsClinic from "./application/patients/GetPatientRecordsClinic.js";
+import PatientsController from "./interface/controllers/patients/PatientsController.js";
+import patientRoutes from "./interface/routes/patients/patientRoutes.js";
+
+const patientRecordRepo = new PatientRecordRepo(pool);
+const getPatientRecordsClinic = new GetPatientRecordsClinic(patientRecordRepo);
+const patientsController = new PatientsController(getPatientRecordsClinic);
+
+app.use("/patients", patientRoutes(patientsController));
+
+//==========================================================================================staff
+import StaffRepo from "./infrastructure/database/StaffRepo.js";
+import GetClinicStaffUseCase from "./application/staff/GetClinicStaffUseCase.js";
+import DeleteStaffUseCase from "./application/staff/DeleteStaffUseCase.js";
+import EditStaffUseCase from "./application/staff/EditStaffUseCase.js";
+import AddStaffUseCase from "./application/staff/AddStaffUseCase.js";
+
+import StaffController from "./interface/controllers/staff/StaffController.js";
+import staffRoutes from "./interface/routes/staff/staffRoutes.js";
+
+const staffRepo = new StaffRepo(pool);
+
+const getClinicStaffUseCase = new GetClinicStaffUseCase(staffRepo);
+const addStaffUseCase = new AddStaffUseCase(staffRepo);
+const editStaffUseCase = new EditStaffUseCase(staffRepo);
+const deleteStaffUseCase = new DeleteStaffUseCase(staffRepo);
+
+const staffController = new StaffController(
+  getClinicStaffUseCase,
+  addStaffUseCase,
+  editStaffUseCase,
+  deleteStaffUseCase
+);
+
+app.use("/staff", staffRoutes(staffController));

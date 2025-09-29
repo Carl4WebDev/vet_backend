@@ -8,10 +8,9 @@ import { validateRequest } from "../../middleware/ValidateRequest.js";
 export default function clinicAuthRoutes(clinicController) {
   const router = Router();
 
-  router.post("/register", registerValidation, validateRequest, (req, res) =>
+  router.post("/register", validateRequest, (req, res) =>
     clinicController.registerWithRole(req, res, "clinic_owner")
   );
-
   router.post("/login", loginValidation, validateRequest, (req, res) =>
     clinicController.loginWithRole(req, res, "clinic_owner")
   );
@@ -23,6 +22,11 @@ export default function clinicAuthRoutes(clinicController) {
   router.get(
     "/get-clinic/:clinicId",
     clinicController.getClinicById.bind(clinicController)
+  );
+
+  router.get(
+    "/all-vet/:clinicId",
+    clinicController.getAllVeterinarians.bind(clinicController)
   );
 
   return router;

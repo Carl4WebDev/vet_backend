@@ -162,4 +162,19 @@ export default class PostgresClinicRepository extends IClinicRepository {
     const result = await this.pool.query(query, [clinicId]);
     return result.rows[0];
   }
+  async getAllVeterinarians(clinicId) {
+    const query = `
+    SELECT 
+      vet_id,
+      name AS vet_name,
+      email,
+      contact_number,
+      clinic_id
+    FROM veterinarians
+    WHERE clinic_id = $1
+    ORDER BY name ASC
+  `;
+    const result = await this.pool.query(query, [clinicId]);
+    return result.rows;
+  }
 }

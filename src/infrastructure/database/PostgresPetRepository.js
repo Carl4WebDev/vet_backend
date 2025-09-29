@@ -9,7 +9,7 @@ export default class PostgresPetRepository extends IPetRepository {
   async addPet(pet) {
     const query = `
       INSERT INTO pets (client_id, name, age, weight, gender, birthday, species, breed, bio)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *;
     `;
     const values = [

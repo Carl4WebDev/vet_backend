@@ -114,4 +114,35 @@ export default class AppointmentController {
       res.status(400).json({ success: false, message: err.message });
     }
   }
+
+  async getTodaySchedule(req, res) {
+    try {
+      const clinicId = req.params.clinicId;
+      const schedule = await this.appointmentService.getTodaySchedule(clinicId);
+      res.status(200).json({
+        success: true,
+        message: "Today's schedule retrieved",
+        data: schedule,
+      });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  async getVetAppointments(req, res) {
+    try {
+      const { vetId } = req.params;
+      const { date } = req.query; // optional
+      const data = await this.appointmentService.getVetAppointments(
+        vetId,
+        date
+      );
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error("Error fetching vet appointments:", error);
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to fetch appointments" });
+    }
+  }
 }
