@@ -5,6 +5,8 @@ import {
 } from "../../middleware/AuthValidation.js";
 import { validateRequest } from "../../middleware/ValidateRequest.js";
 
+import { uploadClinicImage } from "../../../infrastructure/config/multer.js";
+
 export default function clinicAuthRoutes(clinicController) {
   const router = Router();
 
@@ -27,6 +29,22 @@ export default function clinicAuthRoutes(clinicController) {
   router.get(
     "/all-vet/:clinicId",
     clinicController.getAllVeterinarians.bind(clinicController)
+  );
+
+  router.put(
+    "/change-password/:clinicId",
+    clinicController.changePasswordClinic.bind(clinicController)
+  );
+
+  router.put(
+    "/change-info/:clinicId",
+    uploadClinicImage.single("image"), // "image" must match frontend form field
+    clinicController.changeInfoClinic.bind(clinicController)
+  );
+
+  router.get(
+    "/details/:clinicId",
+    clinicController.getClinicDetails.bind(clinicController)
   );
 
   return router;

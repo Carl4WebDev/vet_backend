@@ -19,5 +19,6 @@ export default function getClientRoutes(clientController) {
     "/edit-client/:clientId",
     clientController.editClient.bind(clientController)
   );
+
   return router;
 }

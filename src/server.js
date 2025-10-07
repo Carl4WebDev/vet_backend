@@ -68,17 +68,24 @@ import LogoutClinicUseCase from "./application/clinics/use-case/LogoutClinicUseC
 import GetAllClinicsUseCase from "./application/clinics/use-case/GetAllClinicsUseCase.js";
 import GetClinicByIdUseCase from "./application/clinics/use-case/GetClinicByIdUseCase.js";
 import GetAllVetUseCase from "./application/clinics/use-case/GetAllVetUseCase.js";
+import ChangePasswordUseCase from "./application/clinics/use-case/ChangePasswordClinicUseCase.js";
+import ChangeInformationClinicUseCase from "./application/clinics/use-case/ChangeInformationClinicUseCase.js";
+import GetClinicDetailsUseCase from "./application/clinics/use-case/GetClinicDetailsUseCase.js";
+
+import SubscriptionRepo from "./infrastructure/database/SubscriptionRepo.js";
 
 const clinicRepository = new PostgresClinicRepository(pool);
 const clinicRepo = new ClinicRepo(pool);
+const subscriptionRepo = new SubscriptionRepo(pool);
 
 const registerClinicUseCase = new RegisterClinicUseCase(
   clinicRepo,
   tokenClinicService,
-  passwordHasherClinic
+  passwordHasherClinic,
+  subscriptionRepo
 );
 const loginClinicUseCase = new LoginClinicUseCase(
-  clinicRepository,
+  clinicRepo,
   tokenClinicService,
   passwordHasherClinic
 );
@@ -87,6 +94,14 @@ const logoutClinicUseCase = new LogoutClinicUseCase();
 const getAllClinicsUseCase = new GetAllClinicsUseCase(clinicRepository);
 const getClinicByIdUseCase = new GetClinicByIdUseCase(clinicRepository);
 const getAllVetUseCase = new GetAllVetUseCase(clinicRepository);
+const changePasswordUseCase = new ChangePasswordUseCase(
+  clinicRepo,
+  passwordHasher
+);
+const changeInformationClinicUseCase = new ChangeInformationClinicUseCase(
+  clinicRepo
+);
+const getClinicDetailsUseCase = new GetClinicDetailsUseCase(clinicRepo);
 
 const clinicService = new ClinicService(
   registerClinicUseCase,
@@ -94,8 +109,12 @@ const clinicService = new ClinicService(
   logoutClinicUseCase,
   getAllClinicsUseCase,
   getClinicByIdUseCase,
-  getAllVetUseCase
+  getAllVetUseCase,
+  changePasswordUseCase,
+  changeInformationClinicUseCase,
+  getClinicDetailsUseCase
 );
+
 const clinicController = new ClinicController(clinicService);
 app.use("/clinic", clinicAuthRoutes(clinicController));
 
@@ -258,10 +277,15 @@ import PetMedRecordController from "./interface/controllers/medicalRecords/PetMe
 import medRecordsRoutes from "./interface/routes/medicalRecords/medRecordsRoutes.js";
 
 import GetPetMedRecordsUseCase from "./application/medicalRecords/GetPetMedRecordsUseCase.js";
+import CreatePetMedicalRecordUseCase from "./application/medicalRecords/CreatePetMedicalRecordUseCase.js";
 
 const getPetMedRecordsUseCase = new GetPetMedRecordsUseCase(medicalRecordRepo);
+const createPetMedicalRecordUseCase = new CreatePetMedicalRecordUseCase(
+  medicalRecordRepo
+);
 const petMedRecordController = new PetMedRecordController(
-  getPetMedRecordsUseCase
+  getPetMedRecordsUseCase,
+  createPetMedicalRecordUseCase
 );
 
 app.use("/medical-records", medRecordsRoutes(petMedRecordController));
@@ -431,3 +455,14 @@ const staffController = new StaffController(
 );
 
 app.use("/staff", staffRoutes(staffController));
+
+//==========================================================================================paymongo
+import paymongoRoutes from "./interface/routes/payments/paymongoRoutes.js";
+import paymongoWebhook from "./interface/routes/payments/paymongoWebhook.js";
+
+app.use("/paymongo", paymongoRoutes);
+app.use("/paymongo", paymongoWebhook);
+
+//==========================================================================================images
+import path from "path";
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));

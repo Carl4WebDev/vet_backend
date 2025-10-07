@@ -1,3 +1,5 @@
+import fs from "fs";
+
 export default class ClinicRepo {
   constructor(pool) {
     this.pool = pool;
@@ -42,6 +44,7 @@ export default class ClinicRepo {
       await client.query("COMMIT");
       return user;
     } catch (error) {
+      console.log(error);
       await client.query("ROLLBACK");
       throw error;
     } finally {
@@ -182,5 +185,165 @@ export default class ClinicRepo {
     `;
     const result = await this.pool.query(query, [clinicId]);
     return result.rows[0] || null;
+  }
+
+  // src/infrastructure/database/ClinicRepo.js
+
+  async findById(clinicId) {
+    const res = await this.pool.query(
+      `SELECT * FROM users WHERE user_id = $1 LIMIT 1`,
+      [clinicId]
+    );
+    return res.rows[0] || null;
+  }
+
+  // ✅ Update password
+  async updatePassword(clinicId, hashedPassword) {
+    await this.pool.query(`UPDATE users SET password = $1 WHERE user_id = $2`, [
+      hashedPassword,
+      clinicId,
+    ]);
+  }
+
+  // src/infrastructure/database/ClinicRepo.js
+  async updateClinicBasicInfo(clinicId, { name, phone_number }) {
+    // Fetch current values
+    const existing = await this.pool.query(
+      `SELECT clinic_name, phone_number FROM clinics WHERE clinic_id = $1`,
+      [clinicId]
+    );
+
+    if (existing.rows.length === 0) {
+      throw new Error(`Clinic with ID ${clinicId} not found`);
+    }
+
+    const current = existing.rows[0];
+
+    // Merge: if new value is undefined, keep current
+    const finalName = name !== undefined ? name : current.clinic_name;
+    const finalPhone =
+      phone_number !== undefined ? phone_number : current.phone_number;
+
+    await this.pool.query(
+      `UPDATE clinics 
+     SET clinic_name = $1, phone_number = $2
+     WHERE clinic_id = $3`,
+      [finalName, finalPhone, clinicId]
+    );
+  }
+
+  async updateAddress(addressId, address) {
+    await this.pool.query(
+      `UPDATE addresses
+     SET street = $1, city = $2, province = $3, postal_code = $4,
+         country = $5, unit_number = $6, latitude = $7, longitude = $8
+     WHERE address_id = $9`,
+      [
+        address.street,
+        address.city,
+        address.province,
+        address.postal_code,
+        address.country,
+        address.unit_number,
+        address.latitude,
+        address.longitude,
+        addressId,
+      ]
+    );
+  }
+
+  async upsertClinicImage(clinicId, imageFile) {
+    // Check if an image already exists for this clinic
+    const existing = await this.pool.query(
+      `SELECT image_id, file_path 
+     FROM images 
+     WHERE entity_type = 'clinic' AND entity_id = $1 
+     LIMIT 1`,
+      [clinicId]
+    );
+
+    if (existing.rows.length > 0) {
+      // 🧹 Optional: delete old file
+      const oldFilePath = existing.rows[0].file_path;
+      try {
+        fs.unlinkSync("." + oldFilePath);
+      } catch (err) {
+        console.warn("⚠️ Old image not found for deletion:", err.message);
+      }
+
+      // 📝 Update existing image
+      await this.pool.query(
+        `UPDATE images 
+       SET file_path = $1, file_name = $2, mime_type = $3 
+       WHERE image_id = $4`,
+        [
+          imageFile.file_path,
+          imageFile.file_name,
+          imageFile.mime_type,
+          existing.rows[0].image_id,
+        ]
+      );
+    } else {
+      // 🆕 Insert a new image record
+      await this.pool.query(
+        `INSERT INTO images (file_path, file_name, mime_type, entity_type, entity_id)
+       VALUES ($1, $2, $3, 'clinic', $4)`,
+        [
+          imageFile.file_path,
+          imageFile.file_name,
+          imageFile.mime_type,
+          clinicId,
+        ]
+      );
+    }
+  }
+
+  async getClinicWithImageById(clinicId) {
+    const query = `
+    SELECT 
+      c.clinic_id,
+      c.clinic_name,
+      c.phone_number,
+      a.address_id,
+      a.street,
+      a.city,
+      a.province,
+      a.postal_code,
+      a.country,
+      a.unit_number,
+      a.latitude,
+      a.longitude,
+      i.file_path AS image_path
+    FROM clinics c
+    JOIN addresses a ON c.address_id = a.address_id
+    LEFT JOIN images i 
+      ON i.entity_type = 'clinic' AND i.entity_id = c.clinic_id
+    WHERE c.clinic_id = $1
+    LIMIT 1
+  `;
+
+    const result = await this.pool.query(query, [clinicId]);
+    if (result.rows.length === 0) return null;
+
+    const row = result.rows[0];
+    return {
+      clinic_id: row.clinic_id,
+      clinic_name: row.clinic_name,
+      phone_number: row.phone_number,
+      image_url: row.image_path
+        ? `${process.env.BASE_URL || "http://localhost:5000"}${row.image_path}`
+        : null,
+      address: {
+        address_id: row.address_id,
+        street: row.street,
+        city: row.city,
+        province: row.province,
+        postal_code: row.postal_code,
+        country: row.country,
+        unit_number: row.unit_number,
+        latitude: row.latitude,
+        longitude: row.longitude,
+      },
+    };
   }
 }

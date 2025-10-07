@@ -1,6 +1,7 @@
 export default class PetMedRecordController {
-  constructor(getPetMedicalRecordsUseCase) {
+  constructor(getPetMedicalRecordsUseCase, createPetMedicalRecordUseCase) {
     this.getPetMedicalRecordsUseCase = getPetMedicalRecordsUseCase;
+    this.createPetMedicalRecordUseCase = createPetMedicalRecordUseCase;
   }
 
   async getPetMedRecords(req, res) {
@@ -19,6 +20,27 @@ export default class PetMedRecordController {
         success: false,
         message: err.message,
       });
+    }
+  }
+
+  async createMedicalRecord(req, res) {
+    try {
+      const { petId } = req.params;
+      const data = req.body;
+
+      const result = await this.createPetMedicalRecordUseCase.execute(
+        petId,
+        data
+      );
+
+      res.status(201).json({
+        success: true,
+        message: "Medical record created successfully",
+        data: result,
+      });
+    } catch (err) {
+      console.error("❌ Error in createMedicalRecord:", err);
+      res.status(500).json({ success: false, message: err.message });
     }
   }
 }

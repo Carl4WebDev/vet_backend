@@ -15,7 +15,7 @@ export default class LoginClinicUseCase {
       clinic.password
     );
     if (!isValidPassword) throw new Error("Invalid credentials");
-
+    console.log("from login usecase");
     const { password: _, ...safeUser } = clinic;
     const token = this.tokenService.generate({
       id: clinic.id,

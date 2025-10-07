@@ -8,5 +8,9 @@ export default function medRecordsRoutes(petMedRecordController) {
     petMedRecordController.getPetMedRecords.bind(petMedRecordController)
   );
 
+  router.post(
+    "/add-medical-record/:petId",
+    petMedRecordController.createMedicalRecord.bind(petMedRecordController)
+  );
   return router;
 }

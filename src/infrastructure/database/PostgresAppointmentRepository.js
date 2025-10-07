@@ -233,7 +233,8 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
     return result.rows;
   }
 
-  async getAppointmentsByVeterinarian(vetId, date) {
+  // repository
+  async getAppointmentsByVeterinarian(vetId, { date, month, year } = {}) {
     let query = `
     SELECT 
       a.appointment_id,
@@ -254,10 +255,26 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
   `;
 
     const params = [vetId];
+    let paramIndex = 2;
 
     if (date) {
-      query += ` AND a.date = $2`; // ✅ add date filter only if provided
+      query += ` AND a.date = $${paramIndex}`;
       params.push(date);
+      paramIndex++;
+    } else if (month && year) {
+      // Filter by specific month + year
+      query += ` AND EXTRACT(MONTH FROM a.date) = $${paramIndex}`;
+      params.push(month);
+      paramIndex++;
+
+      query += ` AND EXTRACT(YEAR FROM a.date) = $${paramIndex}`;
+      params.push(year);
+      paramIndex++;
+    } else if (year) {
+      // Filter by year only
+      query += ` AND EXTRACT(YEAR FROM a.date) = $${paramIndex}`;
+      params.push(year);
+      paramIndex++;
     }
 
     query += ` ORDER BY a.start_time ASC`;

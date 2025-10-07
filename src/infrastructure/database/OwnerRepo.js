@@ -27,7 +27,11 @@ export default class OwnerRepo {
           'name', p.name,
           'species', p.species,
           'age', p.age,
-          'notes', p.bio
+          'bio', p.bio,
+          'birthday', p.birthday,
+          'gender', p.gender,
+          'breed', p.breed,
+          'weight', p.weight
         )
       ) FILTER (WHERE p.pet_id IS NOT NULL) AS pets
 

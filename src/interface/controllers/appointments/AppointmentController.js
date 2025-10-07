@@ -129,14 +129,17 @@ export default class AppointmentController {
     }
   }
 
+  // controller
   async getVetAppointments(req, res) {
     try {
       const { vetId } = req.params;
-      const { date } = req.query; // optional
+      const { date, month, year } = req.query; // ✅ accept month & year too
+
       const data = await this.appointmentService.getVetAppointments(
         vetId,
-        date
+        { date, month, year } // pass as object
       );
+
       res.json({ success: true, data });
     } catch (error) {
       console.error("Error fetching vet appointments:", error);

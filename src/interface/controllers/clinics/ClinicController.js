@@ -1,8 +1,3 @@
-// src/interface/controllers/ClinicController.js
-
-import AddressBuilder from "../../../domain/Builders/AddressBuilder.js";
-import ClinicBuilder from "../../../domain/Builders/ClinicBuilder.js";
-
 export default class ClinicController {
   constructor(clinicService, subscriptionRepo) {
     this.clinicService = clinicService;
@@ -22,6 +17,8 @@ export default class ClinicController {
   // POST /auth/clinic/login
   loginWithRole = async (req, res, expectedRole) => {
     try {
+      console.log("from controller log");
+
       const { email, password } = req.body;
 
       if (!email || !password) {
@@ -51,6 +48,8 @@ export default class ClinicController {
   // POST /auth/clinic/register
   registerWithRole = async (req, res, expectedRole) => {
     try {
+      console.log(req.body);
+      console.log("from controller reg");
       if (!req.body.address) {
         return res
           .status(400)
@@ -127,6 +126,78 @@ export default class ClinicController {
       res
         .status(500)
         .json({ success: false, message: "Failed to fetch veterinarians" });
+    }
+  };
+
+  changePasswordClinic = async (req, res) => {
+    try {
+      const { clinicId } = req.params; // comes from auth middleware
+      const { oldPassword, newPassword } = req.body;
+
+      await this.clinicService.changePasswordClinic(
+        clinicId,
+        oldPassword,
+        newPassword
+      );
+
+      res.json({ message: "Password changed successfully" });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  };
+
+  changeInfoClinic = async (req, res) => {
+    try {
+      const { clinicId } = req.params;
+      const { name, phone_number, address } = req.body;
+
+      let imageFile = null;
+      if (req.file) {
+        imageFile = {
+          file_path: `/uploads/clinics/${req.file.filename}`,
+          file_name: req.file.originalname,
+          mime_type: req.file.mimetype,
+        };
+      }
+
+      let parsedAddress = address;
+      if (typeof address === "string") {
+        try {
+          parsedAddress = JSON.parse(address);
+        } catch {
+          parsedAddress = null;
+        }
+      }
+
+      const result = await this.clinicService.changeInfoClinic({
+        clinicId,
+        // Only pass values if they actually exist
+        ...(name ? { name } : {}),
+        ...(phone_number ? { phone_number } : {}),
+        ...(parsedAddress ? { address: parsedAddress } : {}),
+        ...(imageFile ? { imageFile } : {}),
+      });
+
+      res.json({ message: "Clinic updated successfully", ...result });
+    } catch (err) {
+      console.error("Change info error:", err);
+      res.status(400).json({ error: err.message });
+    }
+  };
+
+  getClinicDetails = async (req, res) => {
+    try {
+      const { clinicId } = req.params;
+      const clinic = await this.clinicService.getClinicDetails(clinicId);
+
+      res.status(200).json({
+        success: true,
+        message: "Successfully retrieved clinic details",
+        data: clinic,
+      });
+    } catch (err) {
+      console.error("Get clinic details error:", err);
+      res.status(400).json({ error: err.message });
     }
   };
 }

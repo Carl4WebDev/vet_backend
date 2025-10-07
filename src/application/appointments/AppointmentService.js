@@ -49,7 +49,7 @@ export default class AppointmentService {
     return this.getTodayScheduleUseCase.execute(clinicId);
   }
 
-  getVetAppointments(vetId, date) {
-    return this.getVetAppointmentsUseCase.execute(vetId, date);
+  getVetAppointments(vetId, filters) {
+    return this.getVetAppointmentsUseCase.execute(vetId, filters);
   }
 }
