@@ -2,6 +2,7 @@ import express from "express";
 import fetch from "node-fetch";
 
 const router = express.Router();
+const FRONTEND_URL = process.env.FRONTEND_URL;
 
 router.post("/create-payment-intent", async (req, res) => {
   const { amount, userId, planId } = req.body;
@@ -47,7 +48,6 @@ router.post("/create-payment-intent", async (req, res) => {
       console.error("PayMongo error:", paymentIntentData);
       return res.status(400).json({ error: "Failed to create payment intent" });
     }
-
     const paymentIntentId = paymentIntentData.data.id;
 
     // ✅ 4️⃣ Create Checkout Session
@@ -64,8 +64,8 @@ router.post("/create-payment-intent", async (req, res) => {
             attributes: {
               send_email_receipt: true,
               show_line_items: true,
-              cancel_url: `${process.env.FRONTEND_URL}/subscription/cancel`,
-              success_url: `${process.env.FRONTEND_URL}/subscription/success`,
+              cancel_url: `${FRONTEND_URL}/subscription/cancel`,
+              success_url: `${FRONTEND_URL}/subscription/success`,
               payment_method_types: ["card", "gcash"], // ✅ FIXED
               line_items: [
                 {
