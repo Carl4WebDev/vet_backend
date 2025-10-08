@@ -3,6 +3,14 @@ export default class OwnerController {
     this.ownerService = ownerService;
   }
 
-  getClinicPetOwners = (req, res) =>
-    this.ownerService.getClinicPetOwners(req, res);
+  getClinicPetOwners = async (req, res) => {
+    try {
+      const { clinicId } = req.params;
+      const data = await this.ownerService.getClinicPetOwners(clinicId);
+      res.status(200).json({ success: true, data });
+    } catch (err) {
+      console.error("OwnerController Error:", err);
+      res.status(500).json({ success: false, message: err.message });
+    }
+  };
 }

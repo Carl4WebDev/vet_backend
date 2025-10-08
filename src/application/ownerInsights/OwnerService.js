@@ -3,14 +3,14 @@ export default class OwnerService {
     this.ownerRepo = ownerRepo;
   }
 
-  async getClinicPetOwners(req, res) {
+  async getClinicPetOwners(clinicId) {
     try {
-      const { clinicId } = req.params;
+      // Call the repository to get data
       const data = await this.ownerRepo.getClinicPetOwners(clinicId);
-      res.status(200).json({ success: true, data });
+      return data;
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ success: false, message: err.message });
+      console.error("OwnerService Error:", err);
+      throw new Error("Failed to fetch clinic pet owners");
     }
   }
 }
