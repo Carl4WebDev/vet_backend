@@ -317,7 +317,7 @@ export default class ClinicRepo {
     FROM clinics c
     JOIN addresses a ON c.address_id = a.address_id
     LEFT JOIN images i 
-      ON i.entity_type = 'clinic' AND i.entity_id = c.clinic_id
+      ON i.entity_type = 'clinic_owner' AND i.entity_id = c.clinic_id
     WHERE c.clinic_id = $1
     LIMIT 1
   `;

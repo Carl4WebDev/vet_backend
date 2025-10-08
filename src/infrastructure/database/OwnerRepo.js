@@ -1,3 +1,5 @@
+const BASE_URL = process.env.BASE_URL;
+
 export default class OwnerRepo {
   constructor(pool) {
     this.pool = pool;
@@ -12,6 +14,9 @@ export default class OwnerRepo {
       c.gender,
       a.street || ', ' || a.city || ', ' || a.province AS address,
       u.created_at AS member_since,
+
+      -- 🆕 Image for the client (1 image per client for simplicity)
+      i.file_path AS image_path,
 
       -- stats from appointments
       MAX(ap.date) AS last_visit,
@@ -41,11 +46,25 @@ export default class OwnerRepo {
     LEFT JOIN pets p ON c.client_id = p.client_id
     LEFT JOIN appointments ap ON ap.client_id = c.client_id AND ap.clinic_id = $1
 
+    -- 🆕 Join the images table for client images
+    LEFT JOIN images i 
+      ON i.entity_type = 'client' 
+      AND i.entity_id = c.client_id
+
     WHERE c.client_id IS NOT NULL
-    GROUP BY c.client_id, c.client_name, c.phone, u.email, c.gender, a.street, a.city, a.province, u.created_at
+    GROUP BY 
+      c.client_id, c.client_name, c.phone, u.email, c.gender, 
+      a.street, a.city, a.province, u.created_at, i.file_path
   `;
 
     const result = await this.pool.query(query, [clinicId]);
-    return result.rows;
+
+    // 🧠 Attach full URL like in clinic
+    return result.rows.map((row) => ({
+      ...row,
+      image_url: row.image_path
+        ? `${BASE_URL || "http://localhost:3000"}${row.image_path}`
+        : null,
+    }));
   }
 }
