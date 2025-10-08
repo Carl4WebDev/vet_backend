@@ -1,5 +1,5 @@
 import fs from "fs";
-const FRONTEND_URL = process.env.FRONTEND_URL;
+const BASE_URL = process.env.BASE_URL;
 export default class ClinicRepo {
   constructor(pool) {
     this.pool = pool;
@@ -331,7 +331,7 @@ export default class ClinicRepo {
       clinic_name: row.clinic_name,
       phone_number: row.phone_number,
       image_url: row.image_path
-        ? `${FRONTEND_URL || "http://localhost:5000"}${row.image_path}`
+        ? `${BASE_URL || "http://localhost:5000"}${row.image_path}`
         : null,
       address: {
         address_id: row.address_id,
