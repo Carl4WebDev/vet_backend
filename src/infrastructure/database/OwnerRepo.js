@@ -63,7 +63,7 @@ export default class OwnerRepo {
     return result.rows.map((row) => ({
       ...row,
       image_url: row.image_path
-        ? `${BASE_URL || "http://localhost:3000"}${row.image_path}`
+        ? `${BASE_URL || "http://localhost:5000"}${row.image_path}`
         : null,
     }));
   }
