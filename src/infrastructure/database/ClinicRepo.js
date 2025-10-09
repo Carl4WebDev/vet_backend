@@ -257,7 +257,7 @@ export default class ClinicRepo {
     const existing = await this.pool.query(
       `SELECT image_id, file_path 
      FROM images 
-     WHERE entity_type = 'clinic' AND entity_id = $1 
+     WHERE entity_type = 'clinic_owner' AND entity_id = $1 
      LIMIT 1`,
       [clinicId]
     );

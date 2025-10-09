@@ -5,8 +5,13 @@ export default class ChangeInformationClinicUseCase {
   }
 
   async execute({ clinicId, name, phone_number, address, imageFile }) {
-    // 1️⃣ Update clinic core info (name, phone_number)
-    await this.clinicRepo.updateClinicBasicInfo(clinicId, {
+    const parsedClinicId = Number(clinicId);
+    if (isNaN(parsedClinicId)) {
+      throw new Error(`Invalid clinicId provided: ${clinicId}`);
+    }
+
+    // 1️⃣ Update clinic core info
+    await this.clinicRepo.updateClinicBasicInfo(parsedClinicId, {
       name,
       phone_number,
     });
@@ -15,7 +20,7 @@ export default class ChangeInformationClinicUseCase {
     if (address) {
       let addressId = address.address_id;
       if (!addressId) {
-        addressId = await this.clinicRepo.getClinicAddressId(clinicId);
+        addressId = await this.clinicRepo.getClinicAddressId(parsedClinicId);
       }
 
       if (addressId) {
@@ -25,7 +30,7 @@ export default class ChangeInformationClinicUseCase {
 
     // 3️⃣ Handle image upload if file is provided
     if (imageFile) {
-      await this.clinicRepo.upsertClinicImage(clinicId, imageFile);
+      await this.clinicRepo.upsertClinicImage(parsedClinicId, imageFile);
     }
 
     return { success: true };
