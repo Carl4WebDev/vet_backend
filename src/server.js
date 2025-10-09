@@ -194,7 +194,7 @@ import GetAppointmentByIdUseCase from "./application/appointments/use-case/GetAp
 import RescheduleAppointmentUseCase from "./application/appointments/use-case/RescheduleAppointmentUseCase.js";
 import GetTodayScheduleUseCase from "./application/appointments/use-case/GetTodayScheduleUseCase.js";
 import GetVetAppointmentsUseCase from "./application/appointments/use-case/GetVetAppointmentsUseCase.js";
-import UpdateAppointmentStatusUseCase from "./application/appointments/use-case/updateAppointmentStatusUseCase.js";
+import UpdateAppointmentStatusUseCase from "./application/appointments/use-case/UpdateAppointmentStatusUseCase.js";
 
 import AppointmentService from "./application/appointments/AppointmentService.js";
 import AppointmentController from "./interface/controllers/appointments/AppointmentController.js";
