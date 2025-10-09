@@ -66,6 +66,7 @@ export default class OwnerRepo {
         AND pi.entity_id = p.pet_id
 
       WHERE c.client_id IS NOT NULL
+      AND c.clinic_id = $1
       GROUP BY 
         c.client_id, c.client_name, c.phone, u.email, c.gender, 
         a.street, a.city, a.province, u.created_at, i.file_path

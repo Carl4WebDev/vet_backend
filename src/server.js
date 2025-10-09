@@ -15,7 +15,7 @@ import clinicAuthRoutes from "./interface/routes/auth/clinicAuthRoutes.js";
 
 // Must come before express.json()
 const app = express();
-app.use("/paymongo/webhook", express.raw({ type: "*/*" }));
+
 app.use(cors());
 app.use(express.json());
 
