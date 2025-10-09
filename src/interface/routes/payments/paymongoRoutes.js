@@ -5,6 +5,7 @@ import { pool } from "../../../infrastructure/config/db.js";
 
 const router = Router();
 const FRONTEND_URL = process.env.FRONTEND_URL;
+const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY;
 
 router.post("/create-payment-intent", async (req, res) => {
   const { userId, planId } = req.body;
@@ -30,9 +31,9 @@ router.post("/create-payment-intent", async (req, res) => {
     const subscriptionId = pendingSubRes.rows[0].subscription_id;
 
     // 3) PayMongo: auth
-    const authHeader = `Basic ${Buffer.from(
-      process.env.PAYMONGO_SECRET_KEY + ":"
-    ).toString("base64")}`;
+    const authHeader = `Basic ${Buffer.from(PAYMONGO_SECRET_KEY + ":").toString(
+      "base64"
+    )}`;
 
     // 4) Payment Intent
     const intentRes = await fetch(
