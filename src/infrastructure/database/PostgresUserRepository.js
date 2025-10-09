@@ -4,6 +4,8 @@ import AddressBuilder from "../../domain/Builders/AddressBuilder.js";
 import PetBuilder from "../../domain/Builders/PetBuilder.js";
 import ClientBuilder from "../../domain/Builders/ClientBuilder.js";
 import ClinicBuilder from "../../domain/Builders/ClinicBuilder.js";
+
+const BASE_URL = process.env.BASE_URL;
 export default class PostgresUserRepository extends IUserRepository {
   constructor(pool) {
     super();
@@ -357,11 +359,22 @@ export default class PostgresUserRepository extends IUserRepository {
 
   async getClientsByClinic(clinicId) {
     const query = `
-      SELECT 
-      *
-      FROM clients
-      WHERE clinic_id = $1
-    `;
+    SELECT 
+      c.*, 
+      i.file_path AS image_path,
+      CASE 
+        WHEN i.file_path IS NOT NULL THEN CONCAT('${
+          BASE_URL || "http://localhost:5000"
+        }'::text, i.file_path)
+        ELSE NULL 
+      END AS image_url
+    FROM clients c
+    LEFT JOIN images i
+      ON i.entity_type = 'client'
+      AND i.entity_id = c.client_id
+    WHERE c.clinic_id = $1
+  `;
+
     const result = await this.pool.query(query, [clinicId]);
     return result.rows;
   }

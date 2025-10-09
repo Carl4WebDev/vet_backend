@@ -13,7 +13,9 @@ import AuthController from "./interface/controllers/AuthController.js";
 import clientAuthRoutes from "./interface/routes/auth/clientAuthRoutes.js";
 import clinicAuthRoutes from "./interface/routes/auth/clinicAuthRoutes.js";
 
+// Must come before express.json()
 const app = express();
+app.use("/paymongo/webhook", express.raw({ type: "*/*" }));
 app.use(cors());
 app.use(express.json());
 
@@ -192,6 +194,7 @@ import GetAppointmentByIdUseCase from "./application/appointments/use-case/GetAp
 import RescheduleAppointmentUseCase from "./application/appointments/use-case/RescheduleAppointmentUseCase.js";
 import GetTodayScheduleUseCase from "./application/appointments/use-case/GetTodayScheduleUseCase.js";
 import GetVetAppointmentsUseCase from "./application/appointments/use-case/GetVetAppointmentsUseCase.js";
+import UpdateAppointmentStatusUseCase from "./application/appointments/use-case/updateAppointmentStatusUseCase.js";
 
 import AppointmentService from "./application/appointments/AppointmentService.js";
 import AppointmentController from "./interface/controllers/appointments/AppointmentController.js";
@@ -231,6 +234,9 @@ const getTodayScheduleUseCase = new GetTodayScheduleUseCase(
 const getVetAppointmentsUseCase = new GetVetAppointmentsUseCase(
   appointmentRepository
 );
+const updateAppointmentStatusUseCase = new UpdateAppointmentStatusUseCase(
+  appointmentRepository
+);
 
 const appointmentService = new AppointmentService(
   createAppointmentUseCase,
@@ -241,7 +247,8 @@ const appointmentService = new AppointmentService(
   getAppointmentByIdUseCase,
   rescheduleAppointmentUseCase,
   getTodayScheduleUseCase,
-  getVetAppointmentsUseCase
+  getVetAppointmentsUseCase,
+  updateAppointmentStatusUseCase
 );
 
 const appointmentController = new AppointmentController(appointmentService);
@@ -457,11 +464,25 @@ const staffController = new StaffController(
 app.use("/staff", staffRoutes(staffController));
 
 //==========================================================================================paymongo
+app.use(express.urlencoded({ extended: true }));
+import planRoutes from "./interface/routes/payments/planRoutes.js";
+import subscriptionRoutes from "./interface/routes/payments/subscriptionRoutes.js";
+import billingRoutes from "./interface/routes/payments/billingRoutes.js";
 import paymongoRoutes from "./interface/routes/payments/paymongoRoutes.js";
 import paymongoWebhook from "./interface/routes/payments/paymongoWebhook.js";
 
+// import localPayRoutes from "./interface/routes/payments/localPayRoutes.js";
+
+app.use("/plans", planRoutes);
+app.use("/billing-history", billingRoutes);
 app.use("/paymongo", paymongoRoutes);
 app.use("/paymongo", paymongoWebhook);
+
+app.use("/subscriptions", subscriptionRoutes);
+// app.use("/local-pay", localPayRoutes);
+
+// import paymongoWebhookTest from "./interface/routes/payments/paymongoWebhookTest.js";
+// app.use("/paymongo", express.json(), paymongoWebhookTest);
 
 //==========================================================================================images
 import path from "path";

@@ -148,4 +148,42 @@ export default class AppointmentController {
         .json({ success: false, message: "Failed to fetch appointments" });
     }
   }
+
+  async scheduledAppointment(req, res) {
+    const { appointmentId } = req.params;
+    try {
+      const result = await this.appointmentService.scheduledAppointment(
+        appointmentId
+      );
+      res.json({ success: true, message: result });
+    } catch (err) {
+      console.error("❌ scheduleAppointmentController error:", err);
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  async rejectAppointment(req, res) {
+    const { appointmentId } = req.params;
+    try {
+      const result = await this.appointmentService.rejectAppointment(
+        appointmentId
+      );
+      res.json({ success: true, message: result });
+    } catch (err) {
+      console.error("❌ rejectAppointmentController error:", err);
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+  async completeAppointment(req, res) {
+    const { appointmentId } = req.params;
+    try {
+      const result = await this.appointmentService.completeAppointment(
+        appointmentId
+      );
+      res.json({ success: true, message: result });
+    } catch (err) {
+      console.error("❌ completeAppointmentController error:", err);
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
 }

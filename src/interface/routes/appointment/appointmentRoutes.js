@@ -37,5 +37,18 @@ export default function appointmentRoutes(appointmentController) {
     "/vet-appointments/:vetId",
     appointmentController.getVetAppointments.bind(appointmentController)
   );
+
+  router.put(
+    "/:appointmentId/schedule",
+    appointmentController.scheduledAppointment.bind(appointmentController)
+  );
+  router.put(
+    "/:appointmentId/reject",
+    appointmentController.rejectAppointment.bind(appointmentController)
+  );
+  router.put(
+    "/:appointmentId/complete",
+    appointmentController.completeAppointment.bind(appointmentController)
+  );
   return router;
 }

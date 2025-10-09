@@ -1,23 +1,41 @@
-import express from "express";
+// routes/paymongoRoutes.js
+import { Router } from "express";
 import fetch from "node-fetch";
+import { pool } from "../../../infrastructure/config/db.js";
 
-const router = express.Router();
+const router = Router();
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
 router.post("/create-payment-intent", async (req, res) => {
-  const { amount, userId, planId } = req.body;
+  const { userId, planId } = req.body;
 
   try {
-    // ✅ 1️⃣ Convert amount to centavos
-    const centavos = amount * 100;
+    // 1) Get plan
+    const planRes = await pool.query(
+      "SELECT plan_id, name, price, billing_cycle FROM subscription_plans WHERE plan_id = $1",
+      [planId]
+    );
+    const plan = planRes.rows[0];
+    if (!plan) return res.status(404).json({ error: "Plan not found" });
 
-    // ✅ 2️⃣ Basic Auth header (PayMongo)
+    const centavos = Number(plan.price) * 100;
+
+    // 2) Create or mark "pending" subscription (one per purchase try)
+    const pendingSubRes = await pool.query(
+      `INSERT INTO user_subscriptions (user_id, plan_id, start_date, end_date, status)
+       VALUES ($1, $2, CURRENT_DATE, CURRENT_DATE, 'pending')
+       RETURNING subscription_id`,
+      [userId, planId]
+    );
+    const subscriptionId = pendingSubRes.rows[0].subscription_id;
+
+    // 3) PayMongo: auth
     const authHeader = `Basic ${Buffer.from(
       process.env.PAYMONGO_SECRET_KEY + ":"
     ).toString("base64")}`;
 
-    // ✅ 3️⃣ Create Payment Intent
-    const paymentIntentRes = await fetch(
+    // 4) Payment Intent
+    const intentRes = await fetch(
       "https://api.paymongo.com/v1/payment_intents",
       {
         method: "POST",
@@ -30,12 +48,15 @@ router.post("/create-payment-intent", async (req, res) => {
             attributes: {
               amount: centavos,
               currency: "PHP",
-              description: `Subscription Plan ${planId}`,
+              description: `${plan.name} Subscription #${subscriptionId}`,
               payment_method_allowed: ["card", "gcash"],
               payment_method_options: {
-                card: {
-                  request_three_d_secure: "automatic",
-                },
+                card: { request_three_d_secure: "automatic" },
+              },
+              metadata: {
+                user_id: String(userId),
+                subscription_id: String(subscriptionId),
+                plan_id: String(plan.plan_id),
               },
             },
           },
@@ -43,14 +64,15 @@ router.post("/create-payment-intent", async (req, res) => {
       }
     );
 
-    const paymentIntentData = await paymentIntentRes.json();
-    if (!paymentIntentRes.ok) {
-      console.error("PayMongo error:", paymentIntentData);
+    const intentData = await intentRes.json();
+    if (!intentRes.ok) {
+      console.error("PayMongo Intent error:", intentData);
       return res.status(400).json({ error: "Failed to create payment intent" });
     }
-    const paymentIntentId = paymentIntentData.data.id;
 
-    // ✅ 4️⃣ Create Checkout Session
+    const intentId = intentData.data.id;
+
+    // 5) Checkout Session
     const checkoutRes = await fetch(
       "https://api.paymongo.com/v1/checkout_sessions",
       {
@@ -66,16 +88,21 @@ router.post("/create-payment-intent", async (req, res) => {
               show_line_items: true,
               cancel_url: `${FRONTEND_URL}/subscription/cancel`,
               success_url: `${FRONTEND_URL}/subscription/success`,
-              payment_method_types: ["card", "gcash"], // ✅ FIXED
+              payment_method_types: ["card", "gcash"],
               line_items: [
                 {
                   currency: "PHP",
                   amount: centavos,
-                  name: `Subscription Plan ${planId}`,
+                  name: `${plan.name} Subscription`,
                   quantity: 1,
                 },
               ],
-              payment_intent: paymentIntentId,
+              payment_intent: intentId,
+              metadata: {
+                user_id: String(userId),
+                subscription_id: String(subscriptionId),
+                plan_id: String(plan.plan_id),
+              },
             },
           },
         }),
@@ -84,13 +111,12 @@ router.post("/create-payment-intent", async (req, res) => {
 
     const checkoutData = await checkoutRes.json();
     if (!checkoutRes.ok) {
-      console.error("PayMongo error:", checkoutData);
+      console.error("PayMongo Checkout error:", checkoutData);
       return res
         .status(400)
         .json({ error: "Failed to create checkout session" });
     }
 
-    // ✅ 5️⃣ Send checkout URL to frontend
     const checkoutUrl = checkoutData.data.attributes.checkout_url;
     res.json({ checkoutUrl });
   } catch (err) {

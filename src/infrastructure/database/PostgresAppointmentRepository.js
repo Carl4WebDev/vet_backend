@@ -282,4 +282,20 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
     const result = await this.pool.query(query, params);
     return result.rows;
   }
+
+  async updateAppointmentStatusRepo(appointmentId, newStatus) {
+    try {
+      const query = `
+      UPDATE appointments
+      SET status = $1
+      WHERE appointment_id = $2
+      RETURNING *;
+    `;
+      const result = await this.pool.query(query, [newStatus, appointmentId]);
+      return result.rowCount > 0 ? result.rows[0] : null;
+    } catch (err) {
+      console.error("❌ updateAppointmentStatusRepo error:", err);
+      throw err;
+    }
+  }
 }

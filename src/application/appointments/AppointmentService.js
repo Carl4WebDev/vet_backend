@@ -8,7 +8,8 @@ export default class AppointmentService {
     getAppointmentByIdUseCase,
     rescheduleAppointmentUseCase,
     getTodayScheduleUseCase,
-    getVetAppointmentsUseCase
+    getVetAppointmentsUseCase,
+    updateAppointmentStatusUseCase
   ) {
     this.createAppointmentUseCase = createAppointmentUseCase;
     this.getAppointmentsUseCase = getAppointmentsUseCase;
@@ -19,6 +20,7 @@ export default class AppointmentService {
     this.rescheduleAppointmentUseCase = rescheduleAppointmentUseCase;
     this.getTodayScheduleUseCase = getTodayScheduleUseCase;
     this.getVetAppointmentsUseCase = getVetAppointmentsUseCase;
+    this.updateAppointmentStatusUseCase = updateAppointmentStatusUseCase;
   }
 
   createAppointment(data) {
@@ -51,5 +53,25 @@ export default class AppointmentService {
 
   getVetAppointments(vetId, filters) {
     return this.getVetAppointmentsUseCase.execute(vetId, filters);
+  }
+
+  scheduledAppointment(appointmentId) {
+    return this.updateAppointmentStatusUseCase.execute(
+      appointmentId,
+      "Scheduled"
+    );
+  }
+
+  rejectAppointment(appointmentId) {
+    return this.updateAppointmentStatusUseCase.execute(
+      appointmentId,
+      "Rejected"
+    );
+  }
+  completeAppointment(appointmentId) {
+    return this.updateAppointmentStatusUseCase.execute(
+      appointmentId,
+      "Complete"
+    );
   }
 }

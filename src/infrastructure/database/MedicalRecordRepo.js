@@ -1,3 +1,4 @@
+const BASE_URL = process.env.BASE_URL;
 export default class MedicalRecordRepo {
   constructor(pool) {
     this.pool = pool;
@@ -6,91 +7,7 @@ export default class MedicalRecordRepo {
     try {
       const query = `
      SELECT 
-  -- Medical Record info
-  mr.record_id,
-  mr.pet_id,
-  mr.vet_id,
-  mr.description,
-  mr.test_results,
-  mr.notes,
-  mr.key_action,
-  mr.created_at,
-
-  -- Pet info
-  p.name AS pet_name,
-  p.age AS pet_age,
-  p.weight AS pet_weight,
-  p.gender AS pet_gender,
-  p.birthday AS pet_birthday,
-  p.species AS pet_species,
-  p.breed AS pet_breed,
-  p.bio AS pet_bio,
-
-  -- Visit info
-  v.visit_id,
-  v.visit_date,
-  v.visit_time,
-  v.duration,
-  v.visit_type,
-  v.chief_complaint,
-  v.visit_reason,
-
-  -- Veterinarian info
-  vt.name AS veterinarian_name,
-  vt.specialization AS veterinarian_specialization,
-
-  -- Diagnosis
-  d.primary_diagnosis,
-  d.body_condition,
-  d.overall_health,
-
-  -- Tests and Procedures
-  t.fecal_examination,
-  t.physical_examination,
-
-  -- Medications
-  m.medication_given,
-  m.prescriptions,
-  m.treatment,
-
-  -- ✅ Vital Signs (joined by visit_id)
-  vs.weight AS vital_weight,
-  vs.temperature AS vital_temperature,
-  vs.heart_rate AS vital_heart_rate,
-  vs.resp_rate AS vital_resp_rate
-
-FROM medical_records mr
-JOIN visits v 
-  ON v.visit_id = mr.visit_id
-JOIN veterinarians vt 
-  ON vt.vet_id = mr.vet_id
-JOIN pets p 
-  ON p.pet_id = mr.pet_id
-LEFT JOIN diagnosis_and_assessment d 
-  ON d.diagnosis_id = mr.diagnosis_id
-LEFT JOIN tests_and_procedures t 
-  ON t.test_performed_id = mr.tests_performed_id
-LEFT JOIN test_and_medication m 
-  ON m.medications_id = mr.medications_id
-LEFT JOIN vital_signs vs
-  ON vs.visit_id = v.visit_id   -- 👈 join here!
-
-WHERE mr.pet_id = $1
-ORDER BY v.visit_date DESC, mr.created_at DESC;
-
-    `;
-
-      const result = await this.pool.query(query, [petId]);
-      return result.rows;
-    } catch (error) {
-      console.error("Database error in findByPetId:", error);
-      throw error;
-    }
-  }
-
-  async getMedicalHistory(petId) {
-    const query = `
-      SELECT 
+      -- Medical Record info
       mr.record_id,
       mr.pet_id,
       mr.vet_id,
@@ -99,6 +16,17 @@ ORDER BY v.visit_date DESC, mr.created_at DESC;
       mr.notes,
       mr.key_action,
       mr.created_at,
+
+      -- Pet info
+      p.name AS pet_name,
+      p.age AS pet_age,
+      p.weight AS pet_weight,
+      p.gender AS pet_gender,
+      p.birthday AS pet_birthday,
+      p.species AS pet_species,
+      p.breed AS pet_breed,
+      p.bio AS pet_bio,
+      pet_img.file_path AS pet_image_path,  -- 🆕 Added pet image join result
 
       -- Visit info
       v.visit_id,
@@ -109,7 +37,7 @@ ORDER BY v.visit_date DESC, mr.created_at DESC;
       v.chief_complaint,
       v.visit_reason,
 
-      -- Veterinarian info (from FK)
+      -- Veterinarian info
       vt.name AS veterinarian_name,
       vt.specialization AS veterinarian_specialization,
 
@@ -127,40 +55,130 @@ ORDER BY v.visit_date DESC, mr.created_at DESC;
       m.prescriptions,
       m.treatment,
 
-      -- Vital Signs
-      vs.weight,
-      vs.temperature,
-      vs.heart_rate,
-      vs.resp_rate,
+      -- ✅ Vital Signs (joined by visit_id)
+      vs.weight AS vital_weight,
+      vs.temperature AS vital_temperature,
+      vs.heart_rate AS vital_heart_rate,
+      vs.resp_rate AS vital_resp_rate
 
-      -- Documents (may be multiple, aggregate them)
-      array_agg(doc.images) AS documents
+    FROM medical_records mr
+    JOIN visits v 
+      ON v.visit_id = mr.visit_id
+    JOIN veterinarians vt 
+      ON vt.vet_id = mr.vet_id
+    JOIN pets p 
+      ON p.pet_id = mr.pet_id
+    LEFT JOIN diagnosis_and_assessment d 
+      ON d.diagnosis_id = mr.diagnosis_id
+    LEFT JOIN tests_and_procedures t 
+      ON t.test_performed_id = mr.tests_performed_id
+    LEFT JOIN test_and_medication m 
+      ON m.medications_id = mr.medications_id
+    LEFT JOIN vital_signs vs
+      ON vs.visit_id = v.visit_id
+
+    -- 🆕 Join pet image (only this line added)
+    LEFT JOIN images pet_img 
+      ON pet_img.entity_type = 'pet'
+      AND pet_img.entity_id = p.pet_id
+
+    WHERE mr.pet_id = $1
+    ORDER BY v.visit_date DESC, mr.created_at DESC;
+    `;
+
+      const result = await this.pool.query(query, [petId]);
+
+      return result.rows.map((row) => ({
+        ...row,
+        pet_image_url: row.pet_image_path
+          ? `${BASE_URL || "http://localhost:5000"}${row.pet_image_path}`
+          : null,
+      }));
+    } catch (error) {
+      console.error("Database error in findByPetId:", error);
+      throw error;
+    }
+  }
+
+  async getMedicalHistory(petId) {
+    const query = `
+      SELECT 
+        mr.record_id,
+        mr.pet_id,
+        mr.vet_id,
+        mr.description,
+        mr.test_results,
+        mr.notes,
+        mr.key_action,
+        mr.created_at,
+
+        v.visit_id,
+        v.visit_date,
+        v.visit_time,
+        v.duration,
+        v.visit_type,
+        v.chief_complaint,
+        v.visit_reason,
+
+        vt.name AS veterinarian_name,
+        vt.specialization AS veterinarian_specialization,
+
+        d.primary_diagnosis,
+        d.body_condition,
+        d.overall_health,
+
+        t.fecal_examination,
+        t.physical_examination,
+
+        m.medication_given,
+        m.prescriptions,
+        m.treatment,
+
+        vs.weight,
+        vs.temperature,
+        vs.heart_rate,
+        vs.resp_rate,
+
+        array_agg(DISTINCT doc.images) AS documents,
+
+        -- 🐾 Pet Image
+        pet_img.file_path AS pet_image_path
 
       FROM medical_records mr
       JOIN visits v ON v.visit_id = mr.visit_id
-      JOIN veterinarians vt ON vt.vet_id = mr.vet_id   -- ✅ now uses vet_id from medical_records
+      JOIN veterinarians vt ON vt.vet_id = mr.vet_id
       LEFT JOIN diagnosis_and_assessment d ON d.diagnosis_id = mr.diagnosis_id
       LEFT JOIN tests_and_procedures t ON t.test_performed_id = mr.tests_performed_id
       LEFT JOIN test_and_medication m ON m.medications_id = mr.medications_id
       LEFT JOIN vital_signs vs ON vs.visit_id = v.visit_id
       LEFT JOIN documents doc ON doc.visit_id = v.visit_id
+      LEFT JOIN images pet_img
+        ON pet_img.entity_type = 'pet'
+        AND pet_img.entity_id = mr.pet_id
 
-      WHERE mr.pet_id = $1 -- pass pet_id as parameter
+      WHERE mr.pet_id = $1
 
       GROUP BY 
-          mr.record_id, mr.pet_id, mr.vet_id, mr.description, mr.test_results,
-          mr.notes, mr.key_action, mr.created_at,
-          v.visit_id, v.visit_date, v.visit_time, v.duration, v.visit_type, v.chief_complaint, v.visit_reason,
-          vt.name, vt.specialization,
-          d.primary_diagnosis, d.body_condition, d.overall_health,
-          t.fecal_examination, t.physical_examination,
-          m.medication_given, m.prescriptions, m.treatment,
-          vs.weight, vs.temperature, vs.heart_rate, vs.resp_rate;
+        mr.record_id, mr.pet_id, mr.vet_id, mr.description, mr.test_results,
+        mr.notes, mr.key_action, mr.created_at,
+        v.visit_id, v.visit_date, v.visit_time, v.duration, v.visit_type, v.chief_complaint, v.visit_reason,
+        vt.name, vt.specialization,
+        d.primary_diagnosis, d.body_condition, d.overall_health,
+        t.fecal_examination, t.physical_examination,
+        m.medication_given, m.prescriptions, m.treatment,
+        vs.weight, vs.temperature, vs.heart_rate, vs.resp_rate,
+        pet_img.file_path;
+    `;
 
-
-      `;
     const { rows } = await this.pool.query(query, [petId]);
-    return rows;
+
+    // 🧠 Attach image_url like in other repos
+    return rows.map((row) => ({
+      ...row,
+      pet_image_url: row.pet_image_path
+        ? `${BASE_URL || "http://localhost:5000"}${row.pet_image_path}`
+        : null,
+    }));
   }
 
   // 🟢 CREATE NEW MEDICAL RECORD
