@@ -131,7 +131,175 @@ export default class PostgresUserRepository extends IUserRepository {
     );
   }
 
+  // async getClient(userId) {
+  //   const BASE_URL = process.env.BASE_URL;
+
+  //   const query = `
+  //   SELECT
+  //     u.user_id,
+  //     u.email,
+  //     u.role,
+  //     u.created_at,
+
+  //     c.client_id,
+  //     c.client_name,
+  //     c.phone,
+  //     c.tel_num,
+  //     c.gender,
+  //     c.address_id AS client_address_id,
+
+  //     -- Client Address fields
+  //     a.street AS client_street,
+  //     a.city AS client_city,
+  //     a.province AS client_province,
+  //     a.postal_code AS client_zip,
+
+  //     cl.clinic_id,
+  //     cl.clinic_name,
+  //     cl.phone_number AS clinic_phone,
+  //     cl.address_id AS clinic_address_id,
+
+  //     -- Clinic Address fields
+  //     a2.street AS clinic_street,
+  //     a2.city AS clinic_city,
+  //     a2.province AS clinic_province,
+  //     a2.postal_code AS clinic_zip,
+
+  //     -- Clinic Owner fields
+  //     owner.user_id AS owner_id,
+  //     owner.email AS owner_email,
+  //     owner.role AS owner_role,
+  //     owner.created_at AS owner_created_at,
+
+  //     p.pet_id,
+  //     p.name AS pet_name,
+  //     p.species,
+  //     p.breed,
+  //     p.age,
+  //     p.weight,
+  //     p.gender AS pet_gender,
+  //     p.birthday,
+  //     p.client_id AS pet_client_id,
+
+  //     -- 🖼️ Client & Pet Images
+  //     ci.file_path AS client_image_path,
+  //     pi.file_path AS pet_image_path
+
+  //   FROM Users u
+  //   INNER JOIN Clients c ON u.user_id = c.user_id
+  //   LEFT JOIN Addresses a ON c.address_id = a.address_id
+  //   LEFT JOIN Clinics cl ON c.clinic_id = cl.clinic_id
+  //   LEFT JOIN Addresses a2 ON cl.address_id = a2.address_id
+  //   LEFT JOIN Users owner ON cl.owner_id = owner.user_id
+  //   LEFT JOIN Pets p ON c.client_id = p.client_id -- optional pets
+  //   LEFT JOIN Images ci
+  //     ON ci.entity_type = 'client' AND ci.entity_id = c.client_id
+  //   LEFT JOIN Images pi
+  //     ON pi.entity_type = 'pet' AND pi.entity_id = p.pet_id
+  //   WHERE u.user_id = $1
+  // `;
+
+  //   const result = await this.pool.query(query, [userId]);
+  //   if (result.rows.length === 0) return null;
+
+  //   const firstRow = result.rows[0];
+
+  //   // 1️⃣ Build client address
+  //   const clientAddress = firstRow.client_address_id
+  //     ? new AddressBuilder()
+  //         .setId(firstRow.client_address_id)
+  //         .setStreet(firstRow.client_street)
+  //         .setCity(firstRow.client_city)
+  //         .setProvince(firstRow.client_province)
+  //         .setPostalCode(firstRow.client_zip)
+  //         .build()
+  //     : null;
+
+  //   // 2️⃣ Build clinic address
+  //   const clinicAddress = firstRow.clinic_address_id
+  //     ? new AddressBuilder()
+  //         .setId(firstRow.clinic_address_id)
+  //         .setStreet(firstRow.clinic_street)
+  //         .setCity(firstRow.clinic_city)
+  //         .setProvince(firstRow.clinic_province)
+  //         .setPostalCode(firstRow.clinic_zip)
+  //         .build()
+  //     : null;
+
+  //   // 3️⃣ Build clinic object
+  //   const clinic = firstRow.clinic_id
+  //     ? new ClinicBuilder()
+  //         .setId(firstRow.clinic_id)
+  //         .setName(firstRow.clinic_name)
+  //         .setPhoneNumber(firstRow.clinic_phone)
+  //         .setAddress(clinicAddress)
+  //         .setOwner(
+  //           firstRow.owner_id
+  //             ? {
+  //                 id: firstRow.owner_id,
+  //                 email: firstRow.owner_email,
+  //                 role: firstRow.owner_role,
+  //                 createdAt: firstRow.owner_created_at,
+  //               }
+  //             : null
+  //         )
+  //         .build()
+  //     : null;
+
+  //   // 4️⃣ Build pets array (with image)
+  //   const pets = result.rows
+  //     .filter((r) => r.pet_id)
+  //     .map((r) =>
+  //       new PetBuilder()
+  //         .setPetId(r.pet_id)
+  //         .setClientId(r.pet_client_id)
+  //         .setName(r.pet_name)
+  //         .setSpecies(r.species)
+  //         .setBreed(r.breed)
+  //         .setAge(r.age)
+  //         .setWeight(r.weight)
+  //         .setGender(r.pet_gender)
+  //         .setBirthday(r.birthday)
+  //         .setImageUrl(
+  //           r.pet_image_path
+  //             ? `${BASE_URL || "http://localhost:5000"}${r.pet_image_path}`
+  //             : null
+  //         )
+  //         .build()
+  //     );
+
+  //   // 5️⃣ Build client object (with image)
+  //   const client = new ClientBuilder()
+  //     .setClientId(firstRow.client_id)
+  //     .setName(firstRow.client_name)
+  //     .setPhone(firstRow.phone)
+  //     .setTelNum(firstRow.tel_num)
+  //     .setGender(firstRow.gender)
+  //     .setAddress(clientAddress)
+  //     .setClinic(clinic)
+  //     .setPets(pets)
+  //     .setImageUrl(
+  //       firstRow.client_image_path
+  //         ? `${BASE_URL || "http://localhost:5000"}${
+  //             firstRow.client_image_path
+  //           }`
+  //         : null
+  //     )
+  //     .build();
+
+  //   // 6️⃣ Return user + client
+  //   return {
+  //     user_id: firstRow.user_id,
+  //     email: firstRow.email,
+  //     role: firstRow.role,
+  //     created_at: firstRow.created_at,
+  //     client,
+  //   };
+  // }
+
   async getClient(userId) {
+    const BASE_URL = process.env.BASE_URL;
+
     const query = `
     SELECT
       u.user_id,
@@ -177,7 +345,11 @@ export default class PostgresUserRepository extends IUserRepository {
       p.weight,
       p.gender AS pet_gender,
       p.birthday,
-      p.client_id AS pet_client_id
+      p.client_id AS pet_client_id,
+
+      -- 🖼️ Client & Pet Images
+      ci.file_path AS client_image_path,
+      pi.file_path AS pet_image_path
 
     FROM Users u
     INNER JOIN Clients c ON u.user_id = c.user_id
@@ -185,7 +357,9 @@ export default class PostgresUserRepository extends IUserRepository {
     LEFT JOIN Clinics cl ON c.clinic_id = cl.clinic_id
     LEFT JOIN Addresses a2 ON cl.address_id = a2.address_id
     LEFT JOIN Users owner ON cl.owner_id = owner.user_id
-    LEFT JOIN Pets p ON c.client_id = p.client_id -- LEFT JOIN for optional pets
+    LEFT JOIN Pets p ON c.client_id = p.client_id
+    LEFT JOIN Images ci ON ci.entity_type = 'client' AND ci.entity_id = c.client_id
+    LEFT JOIN Images pi ON pi.entity_type = 'pet' AND pi.entity_id = p.pet_id
     WHERE u.user_id = $1
   `;
 
@@ -194,78 +368,80 @@ export default class PostgresUserRepository extends IUserRepository {
 
     const firstRow = result.rows[0];
 
-    // 1️⃣ Build client address (optional safety)
+    // 🏠 Client Address
     const clientAddress = firstRow.client_address_id
-      ? new AddressBuilder()
-          .setId(firstRow.client_address_id)
-          .setStreet(firstRow.client_street)
-          .setCity(firstRow.client_city)
-          .setProvince(firstRow.client_province)
-          .setPostalCode(firstRow.client_zip)
-          .build()
+      ? {
+          address_id: firstRow.client_address_id,
+          street: firstRow.client_street,
+          city: firstRow.client_city,
+          province: firstRow.client_province,
+          postal_code: firstRow.client_zip,
+        }
       : null;
 
-    // 2️⃣ Build clinic address (optional)
+    // 🏥 Clinic Address
     const clinicAddress = firstRow.clinic_address_id
-      ? new AddressBuilder()
-          .setId(firstRow.clinic_address_id)
-          .setStreet(firstRow.clinic_street)
-          .setCity(firstRow.clinic_city)
-          .setProvince(firstRow.clinic_province)
-          .setPostalCode(firstRow.clinic_zip)
-          .build()
+      ? {
+          address_id: firstRow.clinic_address_id,
+          street: firstRow.clinic_street,
+          city: firstRow.clinic_city,
+          province: firstRow.clinic_province,
+          postal_code: firstRow.clinic_zip,
+        }
       : null;
 
-    // 3️⃣ Build clinic object safely
+    // 🧑‍⚕️ Clinic (with owner)
     const clinic = firstRow.clinic_id
-      ? new ClinicBuilder()
-          .setId(firstRow.clinic_id)
-          .setName(firstRow.clinic_name)
-          .setPhoneNumber(firstRow.clinic_phone)
-          .setAddress(clinicAddress)
-          .setOwner(
-            firstRow.owner_id
-              ? {
-                  id: firstRow.owner_id,
-                  email: firstRow.owner_email,
-                  role: firstRow.owner_role,
-                  createdAt: firstRow.owner_created_at,
-                }
-              : null
-          )
-          .build()
+      ? {
+          id: firstRow.clinic_id,
+          name: firstRow.clinic_name,
+          phoneNumber: firstRow.clinic_phone,
+          address: clinicAddress,
+          owner: firstRow.owner_id
+            ? {
+                id: firstRow.owner_id,
+                email: firstRow.owner_email,
+                role: firstRow.owner_role,
+                createdAt: firstRow.owner_created_at,
+              }
+            : null,
+        }
       : null;
 
-    // 4️⃣ Build pets array safely (empty if none)
+    // 🐾 Pets (with image)
     const pets = result.rows
       .filter((r) => r.pet_id)
-      .map((r) =>
-        new PetBuilder()
-          .setPetId(r.pet_id)
-          .setClientId(r.pet_client_id)
-          .setName(r.pet_name)
-          .setSpecies(r.species)
-          .setBreed(r.breed)
-          .setAge(r.age)
-          .setWeight(r.weight)
-          .setGender(r.pet_gender)
-          .setBirthday(r.birthday)
-          .build()
-      );
+      .map((r) => ({
+        petId: r.pet_id,
+        clientId: r.pet_client_id,
+        name: r.pet_name,
+        species: r.species,
+        breed: r.breed,
+        age: r.age,
+        weight: r.weight,
+        gender: r.pet_gender,
+        birthday: r.birthday,
+        imageUrl: r.pet_image_path
+          ? `${BASE_URL || "http://localhost:5000"}${r.pet_image_path}`
+          : null,
+      }));
 
-    // 5️⃣ Build client object
-    const client = new ClientBuilder()
-      .setClientId(firstRow.client_id)
-      .setName(firstRow.client_name)
-      .setPhone(firstRow.phone)
-      .setTelNum(firstRow.tel_num)
-      .setGender(firstRow.gender)
-      .setAddress(clientAddress)
-      .setClinic(clinic)
-      .setPets(pets)
-      .build();
+    // 👤 Client (with image)
+    const client = {
+      clientId: firstRow.client_id,
+      name: firstRow.client_name,
+      phone: firstRow.phone,
+      telNum: firstRow.tel_num,
+      gender: firstRow.gender,
+      address: clientAddress,
+      clinic,
+      pets,
+      imageUrl: firstRow.client_image_path
+        ? `${BASE_URL || "http://localhost:5000"}${firstRow.client_image_path}`
+        : null,
+    };
 
-    // 6️⃣ Return user + client
+    // 📦 Return combined data
     return {
       user_id: firstRow.user_id,
       email: firstRow.email,

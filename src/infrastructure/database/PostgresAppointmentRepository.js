@@ -106,6 +106,8 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
   }
 
   async getAppointmentOfClient(clientId) {
+    const BASE_URL = process.env.BASE_URL;
+
     const query = `
     SELECT 
       a.appointment_id,
@@ -116,6 +118,7 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
       a.notes,
       p.pet_id,
       p.name AS pet_name,
+      i.file_path AS pet_image_path,  -- 🐾 added image join
       c.client_id,
       c.client_name,
       v.vet_id,
@@ -124,12 +127,21 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
     FROM Appointments a
     JOIN clients c ON c.client_id = a.client_id
     JOIN pets p ON p.pet_id = a.pet_id
+    LEFT JOIN images i ON i.entity_type = 'pet' AND i.entity_id = p.pet_id -- 🐾 join pet image
     JOIN Veterinarians v ON v.vet_id = a.vet_id
     WHERE a.client_id = $1 AND a.status = 'Scheduled'
     ORDER BY a.date, a.start_time
   `;
+
     const result = await this.pool.query(query, [clientId]);
-    return result.rows;
+
+    // 🐶 Map with image URL
+    return result.rows.map((r) => ({
+      ...r,
+      pet_image_url: r.pet_image_path
+        ? `${BASE_URL || "http://localhost:5000"}${r.pet_image_path}`
+        : null,
+    }));
   }
 
   async getAppointmentById(appointmentId) {

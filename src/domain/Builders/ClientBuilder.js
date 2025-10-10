@@ -45,6 +45,12 @@ export default class ClientBuilder {
     return this;
   }
 
+  // 🖼️ Added for client image
+  setImageUrl(imageUrl) {
+    this.data.imageUrl = imageUrl;
+    return this;
+  }
+
   build() {
     if (!this.data.clientId || !this.data.name) {
       throw new Error("Missing required fields: clientId or name");

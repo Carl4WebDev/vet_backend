@@ -1,4 +1,3 @@
-// domain/builders/PetBuilder.js
 import Pet from "../Entities/Pet.js";
 
 export default class PetBuilder {
@@ -53,6 +52,12 @@ export default class PetBuilder {
 
   setBreed(breed) {
     this.data.breed = breed;
+    return this;
+  }
+
+  // 🖼️ Added for pet image
+  setImageUrl(imageUrl) {
+    this.data.imageUrl = imageUrl;
     return this;
   }
 
