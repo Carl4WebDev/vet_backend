@@ -485,5 +485,24 @@ app.use("/subscriptions", subscriptionRoutes);
 // app.use("/paymongo", express.json(), paymongoWebhookTest);
 
 //==========================================================================================images
+
 import path from "path";
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
+import PetRepo from "./infrastructure/database/PetRepo.js";
+import EditPetProfileUseCase from "./application/pets-profile/EditPetProfileUseCase.js";
+import PetProfileController from "./interface/controllers/petProfile/PetProfileController.js";
+import petProfileRoutes from "./interface/routes/petProfileRoutes/petProfileRoutes.js";
+// Dependency setup
+const petRepo = new PetRepo(pool);
+const editPetProfileUseCase = new EditPetProfileUseCase(petRepo);
+const petProfileController = new PetProfileController({
+  editPetProfileUseCase,
+});
+
+app.use("/petProfile", petProfileRoutes(petProfileController));
+
+//=========================================================================================
+import forgotPasswordRoutes from "./interface/routes/auth/forgotPassword.js";
+
+app.use("/auth", forgotPasswordRoutes);
