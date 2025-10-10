@@ -96,65 +96,76 @@ export default class PostgresClinicRepository extends IClinicRepository {
   }
 
   async getAllClinics() {
+    const BASE_URL = process.env.BASE_URL;
+
     const query = `
     SELECT 
-        c.clinic_id,
-        c.clinic_name,
-        c.phone_number,
-        c.is_active,
-        c.created_at AS clinic_created_at,
+      c.clinic_id,
+      c.clinic_name,
+      c.phone_number,
+      c.is_active,
+      c.created_at AS clinic_created_at,
 
-        a.address_id,
-        a.street,
-        a.city,
-        a.province,
-        a.postal_code,
-        a.country,
-        a.unit_number,
-        a.created_at AS address_created_at,
-        a.latitude,
-        a.longitude,
+      a.address_id,
+      a.street,
+      a.city,
+      a.province,
+      a.postal_code,
+      a.country,
+      a.unit_number,
+      a.latitude,
+      a.longitude,
+      a.created_at AS address_created_at,
 
-        u.user_id AS owner_id,
-        u.email AS owner_email,
-        u.role AS owner_role,
-        u.created_at AS owner_created_at
+      u.user_id AS owner_id,
+      u.email AS owner_email,
+      u.role AS owner_role,
+      u.created_at AS owner_created_at,
 
+      i.file_path AS image_path  -- 🖼️ single latest image per clinic
     FROM clinics c
     JOIN addresses a ON c.address_id = a.address_id
     JOIN users u ON c.owner_id = u.user_id
+    LEFT JOIN LATERAL (
+      SELECT file_path
+      FROM images 
+      WHERE entity_type = 'clinic_owner' AND entity_id = c.clinic_id
+      ORDER BY created_at DESC
+      LIMIT 1
+    ) i ON true
   `;
 
     const result = await this.pool.query(query);
+    if (result.rows.length === 0) return [];
 
-    return result.rows.map((row) => {
-      const address = new AddressBuilder()
-        .setId(row.address_id)
-        .setStreet(row.street)
-        .setCity(row.city)
-        .setProvince(row.province)
-        .setPostalCode(row.postal_code)
-        .setCountry(row.country)
-        .setUnitNumber(row.unit_number) // ✅ matches AddressBuilder
-        .setLatitude(row.latitude)
-        .setLongitude(row.longitude)
-        .build();
-
-      return new ClinicBuilder()
-        .setId(row.clinic_id)
-        .setName(row.clinic_name)
-        .setPhoneNumber(row.phone_number)
-        .setIsActive(row.is_active)
-        .setAddress(address)
-        .setOwner({
-          id: row.owner_id,
-          email: row.owner_email,
-          role: row.owner_role,
-          createdAt: row.owner_created_at,
-        })
-        .setCreatedAt(row.clinic_created_at)
-        .build();
-    });
+    return result.rows.map((row) => ({
+      clinic_id: row.clinic_id,
+      clinic_name: row.clinic_name,
+      phone_number: row.phone_number,
+      is_active: row.is_active,
+      created_at: row.clinic_created_at,
+      image_url: row.image_path
+        ? `${BASE_URL || "http://localhost:5000"}${row.image_path}`
+        : null,
+      address: {
+        address_id: row.address_id,
+        street: row.street,
+        city: row.city,
+        province: row.province,
+        postal_code: row.postal_code,
+        country: row.country,
+        unit_number: row.unit_number,
+        latitude: row.latitude,
+        longitude: row.longitude,
+        created_at: row.address_created_at,
+      },
+      owner: {
+        user_id: row.owner_id,
+        email: row.owner_email,
+        role: row.owner_role,
+        created_at: row.owner_created_at,
+      },
+    }));
   }
 
   async getClinicById(clinicId) {

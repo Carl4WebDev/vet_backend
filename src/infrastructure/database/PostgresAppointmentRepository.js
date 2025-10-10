@@ -62,7 +62,7 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
     const result = await this.pool.query(
       `INSERT INTO Appointments 
         (vet_id, client_id, pet_id, date, start_time, end_time, type_id, status, notes, clinic_id) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'Scheduled', $8,$9) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'Pending', $8,$9) 
        RETURNING *`,
       [
         vetId,
@@ -129,7 +129,8 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
     JOIN pets p ON p.pet_id = a.pet_id
     LEFT JOIN images i ON i.entity_type = 'pet' AND i.entity_id = p.pet_id -- 🐾 join pet image
     JOIN Veterinarians v ON v.vet_id = a.vet_id
-    WHERE a.client_id = $1 AND a.status = 'Scheduled'
+    WHERE a.client_id = $1 
+      AND a.status NOT IN ('Rejected', 'Complete', 'Cancelled')  -- ✅ exclude Rejected and Complete
     ORDER BY a.date, a.start_time
   `;
 
@@ -145,6 +146,8 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
   }
 
   async getAppointmentById(appointmentId) {
+    const BASE_URL = process.env.BASE_URL;
+
     const query = `
     SELECT 
       a.appointment_id,
@@ -158,6 +161,7 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
       p.name AS pet_name, 
       p.breed, 
       p.species,
+      i.file_path AS pet_image_path, -- 🐾 added pet image
       v.vet_id,
       v.name AS vet_name,
       c.clinic_name, 
@@ -170,14 +174,26 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
     FROM appointments a 
     LEFT JOIN appointmenttypes at ON a.type_id = at.type_id
     LEFT JOIN pets p ON a.pet_id = p.pet_id
+    LEFT JOIN images i ON i.entity_type = 'pet' AND i.entity_id = p.pet_id -- 🐾 added join
     LEFT JOIN veterinarians v ON a.vet_id = v.vet_id
     LEFT JOIN clinics c ON a.clinic_id = c.clinic_id
     LEFT JOIN addresses add ON c.address_id = add.address_id
     LEFT JOIN clients cl ON a.client_id = cl.client_id
-    WHERE a.appointment_id = $1`;
+    WHERE a.appointment_id = $1
+  `;
 
     const result = await this.pool.query(query, [appointmentId]);
-    return result.rows[0];
+    const row = result.rows[0];
+
+    if (!row) return null;
+
+    // 🐶 Add computed image URL
+    return {
+      ...row,
+      pet_image_url: row.pet_image_path
+        ? `${BASE_URL || "http://localhost:5000"}${row.pet_image_path}`
+        : null,
+    };
   }
 
   // repositories/AppointmentRepository.js
@@ -230,17 +246,26 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
 
   async getTodaySchedule(clinicId) {
     const query = `
-      SELECT a.appointment_id, a.start_time, a.end_time, at.name AS type, a.status,
-             c.client_name, p.name AS pet_name, v.name
-      FROM appointments a
-      JOIN clients c ON a.client_id = c.client_id
-      JOIN pets p ON a.pet_id = p.pet_id
-      JOIN veterinarians v ON a.vet_id = v.vet_id
-      JOIN appointmenttypes at ON a.type_id = at.type_id
-      WHERE a.clinic_id = $1
-        AND a.date = CURRENT_DATE
-      ORDER BY a.start_time ASC
-    `;
+    SELECT 
+      a.appointment_id, 
+      a.start_time, 
+      a.end_time, 
+      at.name AS type, 
+      a.status,
+      c.client_name, 
+      p.name AS pet_name, 
+      v.name AS vet_name
+    FROM appointments a
+    JOIN clients c ON a.client_id = c.client_id
+    JOIN pets p ON a.pet_id = p.pet_id
+    JOIN veterinarians v ON a.vet_id = v.vet_id
+    JOIN appointmenttypes at ON a.type_id = at.type_id
+    WHERE a.clinic_id = $1
+      AND a.date = CURRENT_DATE
+      AND a.status IN ('Scheduled', 'Pending', 'Complete')  -- ✅ include only these
+    ORDER BY a.start_time ASC
+  `;
+
     const result = await this.pool.query(query, [clinicId]);
     return result.rows;
   }
