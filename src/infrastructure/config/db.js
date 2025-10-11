@@ -29,6 +29,7 @@ export const pool = new Pool({
   port: ENV.DB.PORT,
   ssl: { rejectUnauthorized: false }, // ✅ Required for Render
   //for render
+  // for render agagin
 });
 
 pool
