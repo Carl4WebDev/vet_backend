@@ -34,22 +34,26 @@ export default class PostgresPetRepository extends IPetRepository {
     const query = `
     SELECT 
       p.*,
-      i.file_path AS image_path,
+      (
+        SELECT i.file_path
+        FROM images i
+        WHERE i.entity_type = 'pet'
+          AND i.entity_id = p.pet_id
+        ORDER BY i.created_at DESC
+        LIMIT 1
+      ) AS image_path,
       COUNT(mr.record_id) AS medical_record_count
     FROM pets p
-    LEFT JOIN images i 
-      ON i.entity_type = 'pet' AND i.entity_id = p.pet_id
     LEFT JOIN medical_records mr 
       ON mr.pet_id = p.pet_id
     WHERE p.client_id = $1
-    GROUP BY p.pet_id, i.file_path
+    GROUP BY p.pet_id
   `;
 
     const { rows } = await this.pool.query(query, [clientId]);
 
     if (!rows || rows.length === 0) return [];
 
-    // 🐾 Map pets with image URL and record count
     return rows.map((r) => ({
       pet_id: r.pet_id,
       client_id: r.client_id,
