@@ -125,7 +125,7 @@ export default class MedicalRecordRepo {
       throw error;
     }
   }
-
+  //fixed ssl
   async getMedicalHistory(petId) {
     const query = `
       SELECT 
