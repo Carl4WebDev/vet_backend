@@ -26,7 +26,7 @@ export default class MedicalRecordRepo {
       p.species AS pet_species,
       p.breed AS pet_breed,
       p.bio AS pet_bio,
-      pet_img.file_path AS pet_image_path,  -- 🆕 Added pet image join result
+      pet_img.file_path AS pet_image_path,
 
       -- Visit info
       v.visit_id,
@@ -76,18 +76,44 @@ export default class MedicalRecordRepo {
       ON m.medications_id = mr.medications_id
     LEFT JOIN vital_signs vs
       ON vs.visit_id = v.visit_id
-
-    -- 🆕 Join pet image (only this line added)
     LEFT JOIN images pet_img 
       ON pet_img.entity_type = 'pet'
       AND pet_img.entity_id = p.pet_id
-
     WHERE mr.pet_id = $1
     ORDER BY v.visit_date DESC, mr.created_at DESC;
     `;
 
       const result = await this.pool.query(query, [petId]);
 
+      // 🧩 ADD THIS FALLBACK — fetch pet info if there are no records
+      if (result.rows.length === 0) {
+        const petQuery = `
+        SELECT 
+          p.pet_id,
+          p.name AS pet_name,
+          p.age AS pet_age,
+          p.weight AS pet_weight,
+          p.gender AS pet_gender,
+          p.birthday AS pet_birthday,
+          p.species AS pet_species,
+          p.breed AS pet_breed,
+          p.bio AS pet_bio,
+          i.file_path AS pet_image_path
+        FROM pets p
+        LEFT JOIN images i
+          ON i.entity_type = 'pet' AND i.entity_id = p.pet_id
+        WHERE p.pet_id = $1;
+      `;
+        const petResult = await this.pool.query(petQuery, [petId]);
+        return petResult.rows.map((row) => ({
+          ...row,
+          pet_image_url: row.pet_image_path
+            ? `${BASE_URL || "http://localhost:5000"}${row.pet_image_path}`
+            : null,
+        }));
+      }
+
+      // ✅ Normal case: return medical record results
       return result.rows.map((row) => ({
         ...row,
         pet_image_url: row.pet_image_path
