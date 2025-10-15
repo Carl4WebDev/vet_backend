@@ -13,4 +13,14 @@ export default class OwnerService {
       throw new Error("Failed to fetch clinic pet owners");
     }
   }
+  async getAllPetOwners() {
+    try {
+      // Call the repository to get data
+      const data = await this.ownerRepo.getAllPetOwners();
+      return data;
+    } catch (err) {
+      console.error("OwnerService Error (getAllPetOwners) :", err);
+      throw new Error("Failed to fetch clinic pet owners");
+    }
+  }
 }

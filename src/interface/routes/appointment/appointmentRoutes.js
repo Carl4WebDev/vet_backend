@@ -17,7 +17,10 @@ export default function appointmentRoutes(appointmentController) {
     appointmentController.cancelAppointment.bind(appointmentController)
   );
 
-  router.get("/client/:clientId", appointmentController.getAppointmentOfClient);
+  router.get(
+    "/client/:clientId",
+    appointmentController.getAppointmentOfClient.bind(appointmentController)
+  );
 
   router.get(
     "/appointment/:appointmentId",

@@ -4,35 +4,23 @@ export default class EditClientUseCase {
   }
 
   async execute(clientId, updates) {
-    try {
-      // Validation
-      if (!clientId) {
-        throw new Error("Client ID is required"); // ← Throw error instead of using res
-      }
+    if (!clientId) throw new Error("Client ID is required");
 
-      const numericClientId = parseInt(clientId);
-      if (isNaN(numericClientId)) {
-        throw new Error("Client ID must be a valid number");
-      }
+    const numericClientId = parseInt(clientId);
+    if (isNaN(numericClientId))
+      throw new Error("Client ID must be a valid number");
 
-      if (!updates || Object.keys(updates).length === 0) {
-        throw new Error("At least one update field is required");
-      }
+    if (!updates || Object.keys(updates).length === 0)
+      throw new Error("At least one update field is required");
 
-      // Database operation
-      const updatedClient = await this.userRepo.updateClient(
-        numericClientId,
-        updates
-      );
+    // Delegate full logic to repo
+    const updatedClient = await this.userRepo.updateClientWithAddressAndImages(
+      numericClientId,
+      updates
+    );
 
-      if (!updatedClient) {
-        throw new Error("Client not found");
-      }
+    if (!updatedClient) throw new Error("Client not found");
 
-      return updatedClient; // ← Return the updated pet data
-    } catch (error) {
-      console.error("Error in EditClientUseCase:", error);
-      throw error; // ← Re-throw the error for the controller to handle
-    }
+    return updatedClient;
   }
 }

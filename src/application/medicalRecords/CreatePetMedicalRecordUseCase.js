@@ -3,7 +3,8 @@ export default class CreatePetMedicalRecordUseCase {
     this.medicalRecordRepo = medicalRecordRepo;
   }
 
-  async execute(petId, data) {
-    return await this.medicalRecordRepo.createMedicalRecord(petId, data);
+  async execute(petId, data, files = []) {
+    if (!data) throw new Error("Form data is missing.");
+    return await this.medicalRecordRepo.createMedicalRecord(petId, data, files);
   }
 }

@@ -13,4 +13,13 @@ export default class OwnerController {
       res.status(500).json({ success: false, message: err.message });
     }
   };
+  getAllPetOwners = async (req, res) => {
+    try {
+      const data = await this.ownerService.getAllPetOwners();
+      res.status(200).json({ success: true, data });
+    } catch (err) {
+      console.error("OwnerController Error: yesser", err);
+      res.status(500).json({ success: false, message: err.message });
+    }
+  };
 }

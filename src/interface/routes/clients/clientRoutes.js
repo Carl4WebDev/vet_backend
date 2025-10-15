@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { uploadClientImage } from "../../../infrastructure/config/multer.js";
 
 export default function getClientRoutes(clientController) {
   const router = Router();
@@ -16,7 +17,11 @@ export default function getClientRoutes(clientController) {
     clientController.getClientsByClinic.bind(clientController)
   );
   router.put(
-    "/edit-client/:clientId",
+    "/edit-client/:id",
+    uploadClientImage.fields([
+      { name: "main_image", maxCount: 1 },
+      { name: "background_image", maxCount: 1 },
+    ]),
     clientController.editClient.bind(clientController)
   );
 

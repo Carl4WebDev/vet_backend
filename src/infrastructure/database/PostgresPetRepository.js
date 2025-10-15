@@ -39,6 +39,7 @@ export default class PostgresPetRepository extends IPetRepository {
         FROM images i
         WHERE i.entity_type = 'pet'
           AND i.entity_id = p.pet_id
+          AND i.image_role = 'main'
         ORDER BY i.created_at DESC
         LIMIT 1
       ) AS image_path,
@@ -67,8 +68,11 @@ export default class PostgresPetRepository extends IPetRepository {
       bio: r.bio,
       medical_record_count: Number(r.medical_record_count) || 0,
       image_url: r.image_path
-        ? `${BASE_URL || "http://localhost:5000"}${r.image_path}`
-        : null,
+        ? `${(BASE_URL || "http://localhost:5000").replace(
+            /\/$/,
+            ""
+          )}/${r.image_path.replace(/^\/?/, "")}`
+        : null, // ✅ fixed missing slash safely
     }));
   }
 

@@ -274,7 +274,7 @@ export default class ClinicRepo {
       // 📝 Update existing image
       await this.pool.query(
         `UPDATE images 
-       SET file_path = $1, file_name = $2, mime_type = $3 
+       SET file_path = $1, file_name = $2, mime_type = $3, image_role = 'main'
        WHERE image_id = $4`,
         [
           imageFile.file_path,
@@ -284,10 +284,10 @@ export default class ClinicRepo {
         ]
       );
     } else {
-      // 🆕 Insert a new image record
+      // 🆕 Insert a new image record (use 'clinic_owner' not 'clinic')
       await this.pool.query(
-        `INSERT INTO images (file_path, file_name, mime_type, entity_type, entity_id)
-       VALUES ($1, $2, $3, 'clinic', $4)`,
+        `INSERT INTO images (file_path, file_name, mime_type, entity_type, entity_id, image_role)
+       VALUES ($1, $2, $3, 'clinic_owner', $4, 'main')`,
         [
           imageFile.file_path,
           imageFile.file_name,
@@ -297,8 +297,9 @@ export default class ClinicRepo {
       );
     }
   }
-
   async getClinicWithImageById(clinicId) {
+    const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
+
     const query = `
     SELECT 
       c.clinic_id,
@@ -317,9 +318,12 @@ export default class ClinicRepo {
     FROM clinics c
     JOIN addresses a ON c.address_id = a.address_id
     LEFT JOIN images i 
-      ON i.entity_type = 'clinic_owner' AND i.entity_id = c.clinic_id
+      ON i.entity_type = 'clinic_owner'
+      AND i.entity_id = c.clinic_id
+      AND i.image_role = 'main'
     WHERE c.clinic_id = $1
-    LIMIT 1
+    ORDER BY i.created_at DESC
+    LIMIT 1;
   `;
 
     const result = await this.pool.query(query, [clinicId]);
@@ -331,7 +335,9 @@ export default class ClinicRepo {
       clinic_name: row.clinic_name,
       phone_number: row.phone_number,
       image_url: row.image_path
-        ? `${BASE_URL || "http://localhost:5000"}${row.image_path}`
+        ? row.image_path.startsWith("/")
+          ? `${BASE_URL}${row.image_path}`
+          : `${BASE_URL}/${row.image_path}`
         : null,
       address: {
         address_id: row.address_id,

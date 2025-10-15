@@ -502,7 +502,34 @@ const petProfileController = new PetProfileController({
 
 app.use("/petProfile", petProfileRoutes(petProfileController));
 
+// =====================================================================================Recent
+import imageRoutes from "./interface/routes/images/imageRoutes.js";
+
+// serve uploaded files
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
+// mount images route
+app.use("/images", imageRoutes);
+// ============================================================================================= petUpdate
+import petUpdatesRoutes from "./interface/routes/pets/petUpdatesRoutes.js";
+
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+app.use("/pets", petUpdatesRoutes);
+
+import petUpdatedProfileRoutes from "./interface/routes/pets/petUpdatedProfileRoutes.js";
+app.use("/api/pets", petUpdatedProfileRoutes);
+
+import petUpdatedCreateRoutes from "./interface/routes/pets/petUpdatedCreateRoutes.js";
+app.use("/api/pets", petUpdatedCreateRoutes);
+
+// import healthRecordDocsRoutes from "./interface/routes/healthRecordRoutes/uploadHealthRecordDocs.js.js";
+// app.use("/api/health-records", healthRecordDocsRoutes);
+
 //=========================================================================================
 import forgotPasswordRoutes from "./interface/routes/auth/forgotPassword.js";
-
 app.use("/auth", forgotPasswordRoutes);
+
+//=========================================================================================
+
+import getAllClientsRoute from "./interface/routes/clients/getAllClientRoutes.js";
+app.use("/clients-updated", getAllClientsRoute);

@@ -37,15 +37,31 @@ export default class PostgresUserRepository extends IUserRepository {
       const addressId = await this.insertAddress(client, userData.address);
 
       // 3️⃣ Insert into Role-Specific Table
+      let createdClient = null;
+      let createdClinic = null;
+
       if (role === "client") {
-        await this.insertClient(client, userData, user.user_id, addressId);
+        createdClient = await this.insertClient(
+          client,
+          userData,
+          user.user_id,
+          addressId
+        );
       }
+
       if (role === "clinic_owner") {
-        await this.insertClinic(client, userData, user.user_id, addressId);
+        createdClinic = await this.insertClinic(
+          client,
+          userData,
+          user.user_id,
+          addressId
+        );
       }
 
       await client.query("COMMIT");
-      return user;
+
+      // ✅ Return both — frontend expects client_table_id (from Clients) & client_id (from Users)
+      return { user, client: createdClient, clinic: createdClinic };
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
@@ -103,9 +119,10 @@ export default class PostgresUserRepository extends IUserRepository {
   }
 
   async insertClient(client, userData, userId, addressId) {
-    await client.query(
+    const result = await client.query(
       `INSERT INTO Clients (client_name, phone, tel_num, gender, user_id, address_id)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING client_id, client_name`,
       [
         `${userData.firstName} ${userData.lastName}`,
         userData.phone,
@@ -115,6 +132,7 @@ export default class PostgresUserRepository extends IUserRepository {
         addressId,
       ]
     );
+    return result.rows[0]; // ✅ { client_id, client_name }
   }
 
   async insertClinic(client, userData, userId, addressId) {
@@ -313,25 +331,25 @@ export default class PostgresUserRepository extends IUserRepository {
       c.tel_num,
       c.gender,
       c.address_id AS client_address_id,
+      c.bio,
 
-      -- Client Address fields
+      -- Client Address
       a.street AS client_street,
       a.city AS client_city,
       a.province AS client_province,
       a.postal_code AS client_zip,
 
+      -- Clinic Info
       cl.clinic_id,
       cl.clinic_name,
       cl.phone_number AS clinic_phone,
       cl.address_id AS clinic_address_id,
 
-      -- Clinic Address fields
       a2.street AS clinic_street,
       a2.city AS clinic_city,
       a2.province AS clinic_province,
       a2.postal_code AS clinic_zip,
 
-      -- Clinic Owner fields
       owner.user_id AS owner_id,
       owner.email AS owner_email,
       owner.role AS owner_role,
@@ -347,9 +365,10 @@ export default class PostgresUserRepository extends IUserRepository {
       p.birthday,
       p.client_id AS pet_client_id,
 
-      -- 🖼️ Client & Pet Images
-      ci.file_path AS client_image_path,
-      pi.file_path AS pet_image_path
+      -- ✅ Correct image joins
+      ci_main.file_path AS client_main_image,
+      ci_bg.file_path AS client_background_image,
+      pi_main.file_path AS pet_image_path
 
     FROM Users u
     INNER JOIN Clients c ON u.user_id = c.user_id
@@ -358,8 +377,9 @@ export default class PostgresUserRepository extends IUserRepository {
     LEFT JOIN Addresses a2 ON cl.address_id = a2.address_id
     LEFT JOIN Users owner ON cl.owner_id = owner.user_id
     LEFT JOIN Pets p ON c.client_id = p.client_id
-    LEFT JOIN Images ci ON ci.entity_type = 'client' AND ci.entity_id = c.client_id
-    LEFT JOIN Images pi ON pi.entity_type = 'pet' AND pi.entity_id = p.pet_id
+    LEFT JOIN Images ci_main ON ci_main.entity_type = 'client' AND ci_main.entity_id = c.client_id AND ci_main.image_role = 'main'
+    LEFT JOIN Images ci_bg ON ci_bg.entity_type = 'client' AND ci_bg.entity_id = c.client_id AND ci_bg.image_role = 'background'
+    LEFT JOIN Images pi_main ON pi_main.entity_type = 'pet' AND pi_main.entity_id = p.pet_id AND pi_main.image_role = 'main'
     WHERE u.user_id = $1
   `;
 
@@ -368,7 +388,6 @@ export default class PostgresUserRepository extends IUserRepository {
 
     const firstRow = result.rows[0];
 
-    // 🏠 Client Address
     const clientAddress = firstRow.client_address_id
       ? {
           address_id: firstRow.client_address_id,
@@ -379,7 +398,6 @@ export default class PostgresUserRepository extends IUserRepository {
         }
       : null;
 
-    // 🏥 Clinic Address
     const clinicAddress = firstRow.clinic_address_id
       ? {
           address_id: firstRow.clinic_address_id,
@@ -390,7 +408,6 @@ export default class PostgresUserRepository extends IUserRepository {
         }
       : null;
 
-    // 🧑‍⚕️ Clinic (with owner)
     const clinic = firstRow.clinic_id
       ? {
           id: firstRow.clinic_id,
@@ -408,7 +425,6 @@ export default class PostgresUserRepository extends IUserRepository {
         }
       : null;
 
-    // 🐾 Pets (with image)
     const pets = result.rows
       .filter((r) => r.pet_id)
       .map((r) => ({
@@ -426,22 +442,27 @@ export default class PostgresUserRepository extends IUserRepository {
           : null,
       }));
 
-    // 👤 Client (with image)
     const client = {
       clientId: firstRow.client_id,
       name: firstRow.client_name,
       phone: firstRow.phone,
       telNum: firstRow.tel_num,
       gender: firstRow.gender,
+      email: firstRow.email,
+      bio: firstRow.bio,
       address: clientAddress,
       clinic,
       pets,
-      imageUrl: firstRow.client_image_path
-        ? `${BASE_URL || "http://localhost:5000"}${firstRow.client_image_path}`
+      mainImageUrl: firstRow.client_main_image
+        ? `${BASE_URL || "http://localhost:5000"}${firstRow.client_main_image}`
+        : null,
+      backgroundImageUrl: firstRow.client_background_image
+        ? `${BASE_URL || "http://localhost:5000"}${
+            firstRow.client_background_image
+          }`
         : null,
     };
 
-    // 📦 Return combined data
     return {
       user_id: firstRow.user_id,
       email: firstRow.email,
@@ -451,75 +472,125 @@ export default class PostgresUserRepository extends IUserRepository {
     };
   }
 
-  async updateClient(clientId, updates) {
-    console.log("UPDATE CLIENT CALLED WITH:", { clientId, updates });
-
+  async updateClientWithAddressAndImages(clientId, updates) {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
 
-      // Check if client exists first
-      const checkQuery = "SELECT * FROM clients WHERE client_id = $1";
-      const checkResult = await client.query(checkQuery, [clientId]);
-      console.log("CLIENT EXISTS CHECK:", checkResult.rows.length > 0);
-
-      if (checkResult.rows.length === 0) {
+      // ✅ 1. Ensure client exists
+      const checkRes = await client.query(
+        "SELECT address_id FROM clients WHERE client_id = $1",
+        [clientId]
+      );
+      if (checkRes.rows.length === 0) {
         await client.query("ROLLBACK");
         return null;
       }
 
-      // Build dynamic update query
-      const setClauses = [];
-      const values = [];
-      let paramCount = 1;
+      const addressId = checkRes.rows[0].address_id;
 
+      // ✅ 2. Update clients table
       const allowedFields = [
         "client_name",
         "phone",
         "tel_num",
         "gender",
-        "user_id",
-        "address_id",
         "bio",
       ];
+      const setClauses = [];
+      const values = [];
+      let param = 1;
 
-      Object.entries(updates).forEach(([key, value]) => {
-        if (allowedFields.includes(key) && value !== undefined) {
-          setClauses.push(`${key} = $${paramCount}`);
-          values.push(value);
-          paramCount++;
+      for (const [key, val] of Object.entries(updates)) {
+        if (allowedFields.includes(key) && val !== undefined) {
+          setClauses.push(`${key} = $${param}`);
+          values.push(val);
+          param++;
         }
-      });
-
-      console.log("SET CLAUSES:", setClauses);
-      console.log("VALUES:", values);
-
-      if (setClauses.length === 0) {
-        await client.query("ROLLBACK");
-        throw new Error("No valid fields to update");
       }
 
-      // Add clientId as the last parameter
-      values.push(clientId);
+      if (setClauses.length > 0) {
+        values.push(clientId);
+        const updateQuery = `
+        UPDATE clients
+        SET ${setClauses.join(", ")}
+        WHERE client_id = $${param}
+      `;
+        await client.query(updateQuery, values);
+      }
 
-      const updateQuery = `
-            UPDATE clients 
-            SET ${setClauses.join(", ")}
-            WHERE client_id = $${paramCount}
-            RETURNING *
-        `;
+      // ✅ 3. Update address (if provided)
+      if (
+        updates.street ||
+        updates.city ||
+        updates.province ||
+        updates.postal_code
+      ) {
+        await client.query(
+          `
+        UPDATE addresses
+        SET 
+          street = COALESCE($1, street),
+          city = COALESCE($2, city),
+          province = COALESCE($3, province),
+          postal_code = COALESCE($4, postal_code)
+        WHERE address_id = $5
+        `,
+          [
+            updates.street,
+            updates.city,
+            updates.province,
+            updates.postal_code,
+            addressId,
+          ]
+        );
+      }
 
-      console.log("FINAL QUERY:", updateQuery);
+      // ✅ 4. Handle images
+      const BASE_PATH = process.env.BASE_URL || "http://localhost:5000";
 
-      const result = await client.query(updateQuery, values);
+      const imageQueries = [];
+      if (updates.mainImage) {
+        imageQueries.push({
+          entity_type: "client",
+          entity_id: clientId,
+          image_role: "main",
+          file_path: `/uploads/clients/${updates.mainImage.filename}`, // ✅ only relative
+        });
+      }
+      if (updates.backgroundImage) {
+        imageQueries.push({
+          entity_type: "client",
+          entity_id: clientId,
+          image_role: "background",
+          file_path: `/uploads/clients/${updates.backgroundImage.filename}`, // ✅ same her
+        });
+      }
+
+      for (const img of imageQueries) {
+        await client.query(
+          `
+        INSERT INTO images (entity_type, entity_id, image_role, file_path)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (entity_type, entity_id, image_role)
+        DO UPDATE SET file_path = EXCLUDED.file_path
+        `,
+          [img.entity_type, img.entity_id, img.image_role, img.file_path]
+        );
+      }
+
       await client.query("COMMIT");
 
-      console.log("UPDATE RESULT:", result.rows[0]);
-      return result.rows[0];
-    } catch (error) {
+      // ✅ Return updated client
+      const final = await client.query(
+        `SELECT * FROM clients WHERE client_id = $1`,
+        [clientId]
+      );
+      return final.rows[0];
+    } catch (err) {
       await client.query("ROLLBACK");
-      console.error("Database error in update:", error);
-      throw error;
+      console.error("❌ updateClientWithAddressAndImages:", err);
+      throw err;
     } finally {
       client.release();
     }

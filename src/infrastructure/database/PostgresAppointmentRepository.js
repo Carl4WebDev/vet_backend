@@ -39,6 +39,14 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
     const { vetId, clientId, petId, date, startTime, typeId, notes, clinicId } =
       appointmentData;
 
+    // ✅ Step 0: Auto-assign client.clinic_id to the same as appointment.clinic_id
+    await this.pool.query(
+      `UPDATE clients 
+     SET clinic_id = $1 
+     WHERE client_id = $2 AND (clinic_id IS NULL OR clinic_id != $1)`,
+      [clinicId, clientId]
+    );
+
     // Step 1: Get duration
     const duration = await this.getAppointmentTypeDuration(typeId);
     if (!duration) {
@@ -61,9 +69,9 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
     // Step 4: Save appointment
     const result = await this.pool.query(
       `INSERT INTO Appointments 
-        (vet_id, client_id, pet_id, date, start_time, end_time, type_id, status, notes, clinic_id) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'Pending', $8,$9) 
-       RETURNING *`,
+      (vet_id, client_id, pet_id, date, start_time, end_time, type_id, status, notes, clinic_id) 
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'Pending', $8, $9) 
+     RETURNING *`,
       [
         vetId,
         clientId,
@@ -79,6 +87,7 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
 
     return result.rows[0];
   }
+
   async getAppointmentsByVet(vetId) {
     const result = await this.pool.query(
       `SELECT * FROM Appointments WHERE vet_id = $1`,
@@ -127,7 +136,11 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
     FROM Appointments a
     JOIN clients c ON c.client_id = a.client_id
     JOIN pets p ON p.pet_id = a.pet_id
-    LEFT JOIN images i ON i.entity_type = 'pet' AND i.entity_id = p.pet_id -- 🐾 join pet image
+  LEFT JOIN images i 
+  ON i.entity_type = 'pet' 
+  AND i.entity_id = p.pet_id
+  AND i.image_role = 'main'
+ -- 🐾 join pet image
     JOIN Veterinarians v ON v.vet_id = a.vet_id
     WHERE a.client_id = $1 
       AND a.status NOT IN ('Rejected', 'Complete', 'Cancelled')  -- ✅ exclude Rejected and Complete
@@ -136,11 +149,13 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
 
     const result = await this.pool.query(query, [clientId]);
 
-    // 🐶 Map with image URL
     return result.rows.map((r) => ({
       ...r,
       pet_image_url: r.pet_image_path
-        ? `${BASE_URL || "http://localhost:5000"}${r.pet_image_path}`
+        ? `${(BASE_URL || "http://localhost:5000").replace(
+            /\/$/,
+            ""
+          )}/${r.pet_image_path.replace(/^\/?/, "")}`
         : null,
     }));
   }
@@ -161,7 +176,7 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
       p.name AS pet_name, 
       p.breed, 
       p.species,
-      i.file_path AS pet_image_path, -- 🐾 added pet image
+      i.file_path AS pet_image_path, -- ✅ only main image
       v.vet_id,
       v.name AS vet_name,
       c.clinic_name, 
@@ -174,7 +189,10 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
     FROM appointments a 
     LEFT JOIN appointmenttypes at ON a.type_id = at.type_id
     LEFT JOIN pets p ON a.pet_id = p.pet_id
-    LEFT JOIN images i ON i.entity_type = 'pet' AND i.entity_id = p.pet_id -- 🐾 added join
+    LEFT JOIN images i 
+      ON i.entity_type = 'pet' 
+      AND i.entity_id = p.pet_id
+      AND i.image_role = 'main'  -- ✅ only main image
     LEFT JOIN veterinarians v ON a.vet_id = v.vet_id
     LEFT JOIN clinics c ON a.clinic_id = c.clinic_id
     LEFT JOIN addresses add ON c.address_id = add.address_id
@@ -187,11 +205,13 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
 
     if (!row) return null;
 
-    // 🐶 Add computed image URL
     return {
       ...row,
       pet_image_url: row.pet_image_path
-        ? `${BASE_URL || "http://localhost:5000"}${row.pet_image_path}`
+        ? `${(BASE_URL || "http://localhost:5000").replace(
+            /\/$/,
+            ""
+          )}/${row.pet_image_path.replace(/^\/?/, "")}`
         : null,
     };
   }
