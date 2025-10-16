@@ -526,6 +526,10 @@ app.use("/api/pets", petUpdatedCreateRoutes);
 // app.use("/api/health-records", healthRecordDocsRoutes);
 
 //=========================================================================================
+import vetRoutes from "./interface/routes/vets/vetRoutes.js";
+app.use("/api/vets", vetRoutes);
+
+//=========================================================================================
 import forgotPasswordRoutes from "./interface/routes/auth/forgotPassword.js";
 app.use("/auth", forgotPasswordRoutes);
 
