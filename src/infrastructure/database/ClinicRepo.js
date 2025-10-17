@@ -117,33 +117,33 @@ export default class ClinicRepo {
   // 📋 Get all clinics
   async getAllClinics() {
     const query = `
-      SELECT 
-        c.clinic_id,
-        c.clinic_name,
-        c.phone_number,
-        c.is_active,
-        c.created_at AS clinic_created_at,
+    SELECT 
+      c.clinic_id,
+      c.clinic_name,
+      c.phone_number,
+      c.is_active,
+      c.created_at AS clinic_created_at,
 
-        a.address_id,
-        a.street,
-        a.city,
-        a.province,
-        a.postal_code,
-        a.country,
-        a.unit_number,
-        a.latitude,
-        a.longitude,
-        a.created_at AS address_created_at,
+      a.address_id,
+      a.street,
+      a.city,
+      a.province,
+      a.postal_code,
+      a.country,
+      a.unit_number,
+      a.latitude,
+      a.longitude,
+      a.created_at AS address_created_at,
 
-        u.user_id AS owner_id,
-        u.email AS owner_email,
-        u.role AS owner_role,
-        u.created_at AS owner_created_at
+      u.user_id AS owner_id,
+      u.email AS owner_email,
+      u.role AS owner_role,
+      u.created_at AS owner_created_at
 
-      FROM clinics c
-      JOIN addresses a ON c.address_id = a.address_id
-      JOIN users u ON c.owner_id = u.user_id
-    `;
+    FROM clinics c
+    JOIN addresses a ON c.address_id = a.address_id
+    JOIN users u ON c.owner_id = u.user_id
+  `;
 
     const result = await this.pool.query(query);
 
@@ -153,6 +153,10 @@ export default class ClinicRepo {
       phone_number: row.phone_number,
       is_active: row.is_active,
       created_at: row.clinic_created_at,
+
+      // ✅ add this field for chat (from users table)
+      user_id: row.owner_id,
+
       address: {
         address_id: row.address_id,
         street: row.street,

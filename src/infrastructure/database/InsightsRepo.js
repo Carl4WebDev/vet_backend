@@ -6,12 +6,18 @@ export default class InsightsRepo {
 
   async getPetTypeDistribution(clinicId) {
     const query = `
-      SELECT p.species, COUNT(*)::int AS total
-      FROM appointments a
-      JOIN pets p ON a.pet_id = p.pet_id
-      WHERE a.clinic_id = $1
-      GROUP BY p.species
-    `;
+    SELECT 
+      INITCAP(LOWER(p.species)) AS species,  -- normalize case (Dog, Cat, etc.)
+      COUNT(*)::int AS total
+    FROM appointments a
+    JOIN pets p ON a.pet_id = p.pet_id
+    WHERE a.clinic_id = $1
+      AND p.species IS NOT NULL
+      AND TRIM(p.species) <> ''                -- exclude empty strings
+      AND LOWER(p.species) NOT LIKE '%food%'   -- exclude unwanted entries like 'dogfood'
+    GROUP BY INITCAP(LOWER(p.species))
+    ORDER BY total DESC;
+  `;
     const result = await this.pool.query(query, [clinicId]);
     return result.rows;
   }

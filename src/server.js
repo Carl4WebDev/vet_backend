@@ -329,6 +329,7 @@ io.on("connection", (socket) => {
   socket.on("joinPrivate", ({ senderId, receiverId }) => {
     const conversationId = [senderId, receiverId].sort().join("_");
     socket.join(conversationId);
+    // console.log("🟢 joinPrivate:", { senderId, receiverId, conversationId });
 
     // Load previous messages
     if (!privateMessages[conversationId]) {
