@@ -7,19 +7,60 @@ export default class InsightsRepo {
   async getPetTypeDistribution(clinicId) {
     const query = `
     SELECT 
-      INITCAP(LOWER(p.species)) AS species,  -- normalize case (Dog, Cat, etc.)
+      INITCAP(TRIM(LOWER(p.species))) AS species,  
       COUNT(*)::int AS total
     FROM appointments a
     JOIN pets p ON a.pet_id = p.pet_id
-    WHERE a.clinic_id = $1
+    WHERE 
+      a.clinic_id = $1
       AND p.species IS NOT NULL
-      AND TRIM(p.species) <> ''                -- exclude empty strings
-      AND LOWER(p.species) NOT LIKE '%food%'   -- exclude unwanted entries like 'dogfood'
-    GROUP BY INITCAP(LOWER(p.species))
+      AND TRIM(p.species) <> ''
+      AND LOWER(p.species) NOT IN (
+        'food', 'dogfood', 'catfood', 'unknown', 'test', 'sample', 'n/a', 'na'
+      )
+      AND p.species ~ '^[A-Za-z ]+$'
+      AND LENGTH(TRIM(p.species)) > 2
+    GROUP BY INITCAP(TRIM(LOWER(p.species)))
     ORDER BY total DESC;
   `;
-    const result = await this.pool.query(query, [clinicId]);
-    return result.rows;
+
+    try {
+      const result = await this.pool.query(query, [clinicId]);
+
+      // 🧠 Fuzzy merge dictionary
+      const normalizeMap = {
+        dog: ["dog", "dogs", "puppy", "puppies", "doggo", "doggy"],
+        cat: ["cat", "cats", "kitty", "kitten", "kittens"],
+        rabbit: ["rabbit", "bunny", "hare"],
+        bird: ["bird", "parrot", "canary"],
+      };
+
+      // Helper to find canonical species name
+      const normalize = (name) => {
+        const lower = name.toLowerCase();
+        for (const [canonical, aliases] of Object.entries(normalizeMap)) {
+          if (aliases.includes(lower)) return canonical;
+        }
+        return name; // keep original if no match
+      };
+
+      // 🧩 Merge totals by normalized species
+      const merged = {};
+      for (const row of result.rows) {
+        const norm = normalize(row.species);
+        if (!merged[norm]) merged[norm] = 0;
+        merged[norm] += row.total;
+      }
+
+      // Convert to clean chart data
+      return Object.entries(merged).map(([species, total]) => ({
+        species: species.charAt(0).toUpperCase() + species.slice(1),
+        total,
+      }));
+    } catch (err) {
+      console.error("❌ Error fetching pet type distribution:", err.message);
+      throw new Error("Database error while fetching pet type distribution.");
+    }
   }
 
   async getVisitPurposeDistribution(clinicId) {
