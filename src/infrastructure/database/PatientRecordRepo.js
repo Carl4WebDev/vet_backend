@@ -16,6 +16,7 @@ export default class PatientRecordRepo {
       a.status,
       c.client_name AS customer_name,
       p.name AS pet_name,
+      p.pet_id,
       p.breed,
       v.name AS veterinarian_name
     FROM appointments a
