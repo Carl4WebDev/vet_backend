@@ -523,6 +523,9 @@ app.use("/api/pets", petUpdatedProfileRoutes);
 import petUpdatedCreateRoutes from "./interface/routes/pets/petUpdatedCreateRoutes.js";
 app.use("/api/pets", petUpdatedCreateRoutes);
 
+import reportRoutes from "./interface/routes/reportRoutes/reportRoutes.js";
+app.use("/reports", reportRoutes);
+
 // import healthRecordDocsRoutes from "./interface/routes/healthRecordRoutes/uploadHealthRecordDocs.js.js";
 // app.use("/api/health-records", healthRecordDocsRoutes);
 
