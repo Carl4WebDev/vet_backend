@@ -11,7 +11,7 @@ export default class PostgresClinicRepository extends IClinicRepository {
 
   async findByEmail(email) {
     const query = `
-    SELECT u.user_id, u.email, u.password, u.role,
+    SELECT u.user_id, u.email, u.password, u.role, u.is_banned,
            c.clinic_id, c.clinic_name, c.phone_number, c.is_active, c.address_id
     FROM users u
     LEFT JOIN clinics c ON c.owner_id = u.user_id

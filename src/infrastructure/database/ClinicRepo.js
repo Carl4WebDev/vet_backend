@@ -8,7 +8,7 @@ export default class ClinicRepo {
   // 🔎 Find by email
   async findByEmail(email) {
     const result = await this.pool.query(
-      `SELECT u.user_id, u.email, u.password, u.role,
+      `SELECT u.user_id, u.email, u.password, u.role, u.is_banned,
               c.clinic_id, c.clinic_name, c.phone_number, c.is_active, c.address_id
        FROM users u
        LEFT JOIN clinics c ON u.user_id = c.owner_id
