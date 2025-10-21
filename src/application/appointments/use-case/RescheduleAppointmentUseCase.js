@@ -8,7 +8,7 @@ export default class RescheduleAppointmentUseCase {
     const { date, start_time, end_time, notes } = updates;
 
     // 1. Validate input
-    if (!appointmentId || !date || !start_time || !end_time || !notes) {
+    if (!appointmentId || !date || !start_time || !end_time) {
       throw new Error("Missing required fields");
     }
 
