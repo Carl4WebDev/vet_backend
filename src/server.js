@@ -309,11 +309,9 @@ const io = new Server(server, {
   },
 });
 
-// In your server code (replace the current socket.io implementation)
-
 // Store active users and their socket connections
 const activeUsers = new Map(); // userId -> socketId
-const privateMessages = {}; // Store messages by conversation ID
+let privateMessages = {}; // Store messages by conversation ID
 
 io.on("connection", (socket) => {
   console.log("✅ User connected:", socket.id);
@@ -326,21 +324,32 @@ io.on("connection", (socket) => {
   });
 
   // Join a private conversation
-  socket.on("joinPrivate", ({ senderId, receiverId }) => {
+  socket.on("joinPrivate", async ({ senderId, receiverId }) => {
     const conversationId = [senderId, receiverId].sort().join("_");
     socket.join(conversationId);
-    // console.log("🟢 joinPrivate:", { senderId, receiverId, conversationId });
 
-    // Load previous messages
-    if (!privateMessages[conversationId]) {
-      privateMessages[conversationId] = [];
+    try {
+      // ✅ Load messages from DB
+      const result = await pool.query(
+        `SELECT sender_id AS "senderId", receiver_id AS "receiverId", text, timestamp
+         FROM messages
+         WHERE conversation_id = $1
+         ORDER BY timestamp ASC`,
+        [conversationId]
+      );
+
+      socket.emit("loadMessages", result.rows);
+    } catch (err) {
+      console.error("❌ Failed to load messages:", err.message);
+      // fallback to in-memory if DB fails
+      if (!privateMessages[conversationId]) {
+        privateMessages[conversationId] = [];
+      }
+      socket.emit("loadMessages", privateMessages[conversationId]);
     }
-
-    socket.emit("loadMessages", privateMessages[conversationId]);
-    // console.log(`User ${senderId} joined private chat with ${receiverId}`);
   });
 
-  socket.on("sendPrivateMessage", ({ senderId, receiverId, text }) => {
+  socket.on("sendPrivateMessage", async ({ senderId, receiverId, text }) => {
     const conversationId = [senderId, receiverId].sort().join("_");
     const message = {
       id: Date.now(),
@@ -350,6 +359,18 @@ io.on("connection", (socket) => {
       timestamp: new Date(),
     };
 
+    // ✅ Save message to DB
+    try {
+      await pool.query(
+        `INSERT INTO messages (conversation_id, sender_id, receiver_id, text)
+         VALUES ($1, $2, $3, $4)`,
+        [conversationId, senderId, receiverId, text]
+      );
+    } catch (err) {
+      console.error("❌ DB insert error:", err.message);
+    }
+
+    // keep existing in-memory storage for safety
     if (!privateMessages[conversationId]) {
       privateMessages[conversationId] = [];
     }
@@ -367,16 +388,12 @@ io.on("connection", (socket) => {
   });
 });
 
-// Add this to your server code
+// ✅ Admin route to clear in-memory cache only (DB untouched)
 app.post("/admin/reset-users", (req, res) => {
-  activeUsers.clear(); // Clear the active users map
-  privateMessages = {}; // Clear all messages
-  console.log("✅ All users and messages have been reset");
+  activeUsers.clear();
+  privateMessages = {};
+  console.log("✅ All users and messages have been reset (cache only)");
   res.send({ success: true, message: "All users and messages reset" });
-});
-// Simple test API
-app.get("/chats", (req, res) => {
-  res.send("🚀 Chat backend is running!");
 });
 
 // Simple test API
