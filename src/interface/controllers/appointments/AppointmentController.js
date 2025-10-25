@@ -9,10 +9,17 @@ export default class AppointmentController {
         req.body
       );
       console.log("Booking data:", appointment);
-
       res.status(201).json(appointment);
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      console.error("❌ Appointment creation failed:", error.message);
+
+      // ✅ Explicitly return user-friendly error for domain logic
+      if (error.message === "Cannot book an appointment in the past") {
+        return res.status(400).json({ error: error.message });
+      }
+
+      // 🔁 Fallback for all other issues (e.g. DB or validation)
+      res.status(400).json({ error: "Failed to book appointment" });
     }
   };
 
