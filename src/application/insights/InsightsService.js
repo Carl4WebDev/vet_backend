@@ -18,4 +18,7 @@ export default class InsightsService {
   async getAttendanceStats(clinicId) {
     return await this.insightsRepo.getAttendanceStats(clinicId);
   }
+  async getContagiousDisease(clinicId) {
+    return await this.insightsRepo.getContagiousStatsByPetType(clinicId);
+  }
 }

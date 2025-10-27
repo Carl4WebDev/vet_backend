@@ -22,6 +22,8 @@ export default class MedicalRecordRepo {
         mr.test_results,
         mr.notes,
         mr.key_action,
+        mr.is_contagious,          -- ✅ added
+        mr.contagious_disease,     -- ✅ added
         mr.created_at,
 
         -- 🐾 Pet Info
@@ -178,7 +180,7 @@ export default class MedicalRecordRepo {
                 ? `${BASE_URL}${row.client_image_path}`
                 : `${BASE_URL}/${row.client_image_path}`
               : null,
-            documents, // 🆕 include documents (images/files)
+            documents, // 🆕 include documents
           };
         })
       );
@@ -201,6 +203,8 @@ export default class MedicalRecordRepo {
         mr.test_results,
         mr.notes,
         mr.key_action,
+        mr.is_contagious,
+        mr.contagious_disease,
         mr.created_at,
 
         v.visit_id,
@@ -251,7 +255,7 @@ export default class MedicalRecordRepo {
 
       GROUP BY 
         mr.record_id, mr.pet_id, mr.vet_id, mr.description, mr.test_results,
-        mr.notes, mr.key_action, mr.created_at,
+        mr.notes, mr.key_action, mr.is_contagious, mr.contagious_disease, mr.created_at,
         v.visit_id, v.visit_date, v.visit_time, v.duration, v.visit_type, v.chief_complaint, v.visit_reason,
         vt.name, vt.specialization,
         d.primary_diagnosis, d.body_condition, d.overall_health,
@@ -300,13 +304,14 @@ export default class MedicalRecordRepo {
       );
       const visitId = visitRes.rows[0].visit_id;
 
-      // 2️⃣ Create medical record
+      // 2️⃣ Create medical record (✅ updated to include contagious info)
       const medRes = await client.query(
         `
       INSERT INTO medical_records (
-        pet_id, visit_id, vet_id, description, test_results, notes, key_action, created_at
+        pet_id, visit_id, vet_id, description, test_results, notes, key_action,
+        is_contagious, contagious_disease, created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
       RETURNING record_id
       `,
         [
@@ -317,6 +322,8 @@ export default class MedicalRecordRepo {
           data.test_results,
           data.notes,
           data.key_action,
+          data.is_contagious === "Yes", // ✅ boolean flag
+          data.contagious_disease || null, // ✅ disease name (optional)
         ]
       );
       const recordId = medRes.rows[0].record_id;

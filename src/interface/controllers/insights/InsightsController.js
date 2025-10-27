@@ -43,4 +43,13 @@ export default class InsightsController {
       res.status(500).json({ success: false, message: err.message });
     }
   };
+  getContagiousDisease = async (req, res) => {
+    try {
+      const { clinicId } = req.params;
+      const data = await this.insightsService.getContagiousDisease(clinicId);
+      res.status(200).json({ success: true, data });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  };
 }

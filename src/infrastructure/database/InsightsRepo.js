@@ -128,4 +128,27 @@ export default class InsightsRepo {
     const result = await this.pool.query(query, [clinicId]);
     return result.rows;
   }
+
+  async getContagiousStatsByPetType(clinicId) {
+    const query = `
+    SELECT 
+      TRIM(p.species) AS species,
+      COUNT(*)::int AS total_cases
+    FROM medical_records mr
+    JOIN visits v ON mr.visit_id = v.visit_id
+    JOIN pets p ON mr.pet_id = p.pet_id
+    JOIN appointments a 
+      ON a.pet_id = p.pet_id 
+      AND a.vet_id = v.vet_id 
+      AND a.clinic_id = $1
+    WHERE mr.is_contagious = TRUE
+      AND p.species IS NOT NULL
+      AND TRIM(p.species) <> ''
+    GROUP BY TRIM(p.species)
+    ORDER BY total_cases DESC;
+  `;
+
+    const { rows } = await this.pool.query(query, [clinicId]);
+    return rows;
+  }
 }

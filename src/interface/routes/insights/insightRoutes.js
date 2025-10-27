@@ -17,5 +17,8 @@ export default function insightRoutes(insightsController) {
   router.get("/attendance-stats/:clinicId", (req, res) =>
     insightsController.getAttendanceStats(req, res)
   );
+  router.get("/contagious-disease/:clinicId", (req, res) =>
+    insightsController.getContagiousDisease(req, res)
+  );
   return router;
 }
