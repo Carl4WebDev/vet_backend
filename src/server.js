@@ -586,3 +586,6 @@ app.use("/vet-freelance/patient", patientRecordsFreelanceRoutes);
 
 import freelanceVetAppointmentRoutes from "./interface/routes/freelanceVetRoutes/appointments/freelanceVetAppointmentRoutes.js";
 app.use("/vet-freelance/appointments", freelanceVetAppointmentRoutes);
+
+import vetFreelancerRoutes from "./interface/routes/freelanceVetRoutes/vetFreelancerRoutes.js";
+app.use("/vet-freelance/all-vet", vetFreelancerRoutes);
