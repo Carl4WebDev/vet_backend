@@ -558,3 +558,25 @@ app.use("/auth", forgotPasswordRoutes);
 
 import getAllClientsRoute from "./interface/routes/clients/getAllClientRoutes.js";
 app.use("/clients-updated", getAllClientsRoute);
+//=========================================================================================
+
+import freelanceVetAuthRoutes from "./interface/routes/freelanceVetRoutes/freelanceVetAuthRoutes.js";
+app.use("/auth/vet-freelancer", freelanceVetAuthRoutes);
+
+import freelanceDashboardRoutes from "./interface/routes/freelanceVetRoutes/dashboard/vet_insights.js";
+app.use("/vet-freelance/insights", freelanceDashboardRoutes);
+
+import vetTodaySchedule from "./interface/routes/freelanceVetRoutes/dashboard/vetTodaySchedule.js";
+app.use("/vet-freelance/freelance-schedule", vetTodaySchedule);
+
+import freelanceVetProfileRoutes from "./interface/routes/freelanceVetRoutes/dashboard/freelanceVetProfileRoutes.js";
+app.use("/vet-freelance/vet", freelanceVetProfileRoutes);
+
+import freelancePetOwnersRoutes from "./interface/routes/freelanceVetRoutes/pet-owners/freelancePetOwnersRoutes.js";
+app.use("/vet-freelance/pet-owners", freelancePetOwnersRoutes);
+
+import freelancePetDetailsRoutes from "./interface/routes/freelanceVetRoutes/pet-owners/freelancePetDetailsRoutes.js";
+app.use("/vet-freelance/pet-details", freelancePetDetailsRoutes);
+
+import medicalRecordFreelanceRoutes from "./interface/routes/freelanceVetRoutes/pet-owners/medicalRecordFreelanceRoutes.js";
+app.use("/vet-freelance/pet-medical-records", medicalRecordFreelanceRoutes);
