@@ -583,3 +583,6 @@ app.use("/vet-freelance/pet-medical-records", medicalRecordFreelanceRoutes);
 
 import patientRecordsFreelanceRoutes from "./interface/routes/freelanceVetRoutes/patient/patientRecordsFreelanceRoutes.js";
 app.use("/vet-freelance/patient", patientRecordsFreelanceRoutes);
+
+import freelanceVetAppointmentRoutes from "./interface/routes/freelanceVetRoutes/appointments/freelanceVetAppointmentRoutes.js";
+app.use("/vet-freelance/appointments", freelanceVetAppointmentRoutes);
