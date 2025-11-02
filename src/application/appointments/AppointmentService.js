@@ -26,6 +26,9 @@ export default class AppointmentService {
   createAppointment(data) {
     return this.createAppointmentUseCase.execute(data);
   }
+  bookAppointment(data) {
+    return this.createAppointmentUseCase.execute(data);
+  }
 
   getAppointments(vetId) {
     return this.getAppointmentsUseCase.execute(vetId);

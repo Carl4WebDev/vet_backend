@@ -216,27 +216,27 @@ export default class PostgresAppointmentRepository extends IAppointmentRepositor
     };
   }
 
-  // repositories/AppointmentRepository.js
   async update(appointmentId, updateData) {
-    // 1. Find the appointment so we know vet_id
     const appointment = await this.findById(appointmentId);
     if (!appointment) {
       return { success: false, message: "Appointment not found." };
     }
 
-    // 2. Check conflict
-    const conflict = await this.hasConflict(
-      appointment.vet_id,
-      updateData.date,
-      updateData.start_time,
-      updateData.end_time
-    );
-
-    if (conflict) {
-      return { success: false, message: "Schedule conflict detected." };
+    // 2️⃣ Check conflict for both clinic + freelance vets
+    const vetId = appointment.vet_id || updateData.vet_id;
+    if (vetId) {
+      const conflict = await this.hasConflict(
+        vetId,
+        updateData.date,
+        updateData.start_time,
+        updateData.end_time
+      );
+      if (conflict) {
+        return { success: false, message: "Schedule conflict detected." };
+      }
     }
 
-    // 3. Safe to update
+    // 3️⃣ Update appointment safely
     const result = await this.pool.query(
       `
     UPDATE Appointments
