@@ -17,6 +17,11 @@ export default class AppointmentController {
       if (error.message === "Cannot book an appointment in the past") {
         return res.status(400).json({ error: error.message });
       }
+      if (
+        error.message === "Cannot book a time that has already passed today"
+      ) {
+        return res.status(400).json({ error: error.message });
+      }
 
       // 🔁 Fallback for all other issues (e.g. DB or validation)
       res.status(400).json({ error: "Failed to book appointment" });

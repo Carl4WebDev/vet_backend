@@ -36,16 +36,30 @@ export default class GetAvailableSlotsUseCase {
     );
     if (!duration) throw new Error("Invalid appointment type");
 
-    // 4️⃣ Generate available slots
-    const allSlots = generateTimeSlots(startTime, endTime, duration);
+    // 4️⃣ Generate all possible slots
+    let allSlots = generateTimeSlots(startTime, endTime, duration);
 
-    // 5️⃣ Fetch booked appointments
+    // 5️⃣ Remove slots that have already passed today
+    const today = new Date().toISOString().split("T")[0];
+    if (date === today) {
+      const now = new Date();
+      allSlots = allSlots.filter((slot) => {
+        const [hours, minutes] = slot.start.split(":").map(Number);
+        const slotTime = new Date();
+        slotTime.setHours(hours, minutes, 0, 0);
+
+        // If slot time is still in the future, keep it
+        return slotTime > now;
+      });
+    }
+
+    // 6️⃣ Fetch booked appointments
     const booked = await this.appointmentRepo.getScheduledAppointments(
       vetId,
       date
     );
 
-    // 6️⃣ Filter out overlaps
+    // 7️⃣ Filter out overlapping slots
     const available = allSlots.filter(
       (slot) =>
         !booked.some((b) => slot.start < b.end_time && slot.end > b.start_time)

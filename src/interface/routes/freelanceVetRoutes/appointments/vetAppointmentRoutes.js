@@ -34,27 +34,48 @@ router.post("/book", async (req, res) => {
     const { clientId, petId, vetId, typeId, date, startTime, notes } = req.body;
     console.log("🩺 Booking freelance vet:", req.body);
 
-    // ⚙️ Basic validation
+    // ⚙️ Step 1 — Basic validation
     if (!vetId || !clientId)
       throw new Error("Vet ID and Client ID are required.");
+    if (!date || !startTime)
+      throw new Error("Date and start time are required.");
 
-    const appointmentDate = new Date(date);
     const now = new Date();
-    if (appointmentDate.setHours(0, 0, 0, 0) < now.setHours(0, 0, 0, 0))
-      throw new Error("Cannot book an appointment in the past.");
+    const appointmentDate = new Date(date);
 
-    // 🕒 Step 1 — get duration
+    // 🛑 Step 2 — Check if date is in the past
+    if (appointmentDate.setHours(0, 0, 0, 0) < now.setHours(0, 0, 0, 0)) {
+      throw new Error("Cannot book an appointment in the past.");
+    }
+
+    // 🕒 Step 3 — If booking is for today, ensure time isn't in the past
+    const today = new Date().toISOString().split("T")[0];
+    if (date === today) {
+      const [hours, minutes] = startTime.split(":").map(Number);
+      const appointmentTime = new Date();
+      appointmentTime.setHours(hours, minutes, 0, 0);
+
+      // ✅ Convert to PH time (UTC+8 safety)
+      const offset = appointmentTime.getTimezoneOffset() * 60000;
+      const localTime = new Date(appointmentTime.getTime() - offset);
+
+      if (localTime < now) {
+        throw new Error("Cannot book a time that has already passed today.");
+      }
+    }
+
+    // 🧮 Step 4 — Get duration
     const duration = await appointmentRepo.getAppointmentTypeDuration(typeId);
     if (!duration) throw new Error("Invalid appointment type.");
 
-    // 🧮 Step 2 — compute end_time
+    // 🕓 Step 5 — Compute end_time
     const endTimeQuery = await pool.query(
       `SELECT ($1::time + ($2 || ' minutes')::interval) AS end_time`,
       [startTime, duration]
     );
     const endTime = endTimeQuery.rows[0].end_time;
 
-    // 🔍 Step 3 — conflict check
+    // 🔍 Step 6 — Conflict check
     const conflict = await appointmentRepo.hasConflict(
       vetId,
       date,
@@ -63,7 +84,7 @@ router.post("/book", async (req, res) => {
     );
     if (conflict) throw new Error("Appointment conflict detected.");
 
-    // 📝 Step 4 — save appointment (clinic_id = null)
+    // 💾 Step 7 — Save appointment (clinic_id = null)
     const result = await pool.query(
       `INSERT INTO appointments 
         (vet_id, client_id, pet_id, date, start_time, end_time, type_id, status, notes, clinic_id)
@@ -79,7 +100,7 @@ router.post("/book", async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Booking error:", error);
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success: false, message: error });
   }
 });
 
@@ -98,7 +119,22 @@ router.get("/slots/:vetId/:date/:typeId", async (req, res) => {
     const duration = durationResult.rows[0]?.duration_minutes || 30;
 
     // Step 2: define daily range (default 8am–5pm for freelancers)
-    const allSlots = generateTimeSlots("08:00", "17:00", duration);
+    let allSlots = generateTimeSlots("08:00", "17:00", duration);
+
+    // ✅ Step 2.5: remove past time slots if the selected date is today
+    const today = new Date().toISOString().split("T")[0];
+    if (date === today) {
+      const now = new Date();
+      const currentHours = now.getHours();
+      const currentMinutes = now.getMinutes();
+      const currentTotalMinutes = currentHours * 60 + currentMinutes;
+
+      allSlots = allSlots.filter((slot) => {
+        const [hours, minutes] = slot.start.split(":").map(Number);
+        const slotTotalMinutes = hours * 60 + minutes;
+        return slotTotalMinutes > currentTotalMinutes; // only keep future slots
+      });
+    }
 
     // Step 3: check booked appointments for that vet/date
     const booked = await pool.query(
